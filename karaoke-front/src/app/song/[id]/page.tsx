@@ -345,9 +345,9 @@ export default function SongPage() {
             </div>
           </div>
 
-          {/* YouTube iframe — always hidden; audio plays via user-gesture */}
-          <div style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
-            <div ref={ytContainerRef} />
+          {/* YouTube iframe — off-screen so browser allows audio */}
+          <div style={{ position: "fixed", left: -9999, top: -9999, width: 480, height: 270, pointerEvents: "none" }}>
+            <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }} />
           </div>
 
           {/* Karaoke audio element */}
