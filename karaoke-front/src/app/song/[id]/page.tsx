@@ -334,27 +334,20 @@ export default function SongPage() {
         {/* ── LEFT: Player ───────────────────────────────────────────── */}
         <div className={styles.playerPanel}>
 
-          {/* Thumbnail (karaoke mode) or YouTube iframe (original mode) */}
-          <div className={styles.mediaBlock}>
-            <div className={styles.songInfo}>
-              <div
-                className={styles.songThumb}
-                style={{ display: karaokeMode ? undefined : "none" }}
-              >
-                <Image src={thumbnail} alt={title} fill unoptimized />
-              </div>
-              <div className={styles.songMeta}>
-                <h1 className={styles.songTitle}>{title}</h1>
-                <p className={styles.songChannel}>{channel}</p>
-              </div>
+          {/* Song info + thumbnail (always visible) */}
+          <div className={styles.songInfo}>
+            <div className={styles.songThumb}>
+              <Image src={thumbnail} alt={title} fill unoptimized />
             </div>
-            {/* YouTube iframe — visible in original mode, tiny in karaoke mode */}
-            <div
-              className={styles.ytEmbed}
-              style={karaokeMode ? { width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" } : undefined}
-            >
-              <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }} />
+            <div className={styles.songMeta}>
+              <h1 className={styles.songTitle}>{title}</h1>
+              <p className={styles.songChannel}>{channel}</p>
             </div>
+          </div>
+
+          {/* YouTube iframe — always hidden; audio plays via user-gesture */}
+          <div style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
+            <div ref={ytContainerRef} />
           </div>
 
           {/* Karaoke audio element */}
