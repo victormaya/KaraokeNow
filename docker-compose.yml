@@ -6,6 +6,7 @@ services:
     environment:
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      - YTDLP_PROXY=${YTDLP_PROXY:-}
     volumes:
       - ./cookies.txt:/app/cookies.txt
       - karaoke_cache:/app/cache

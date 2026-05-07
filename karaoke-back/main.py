@@ -39,6 +39,7 @@ CACHE_DIR.mkdir(exist_ok=True)
 
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 COOKIES_FILE = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
+YTDLP_PROXY = os.environ.get("YTDLP_PROXY", "")
 
 # In-memory job store  { job_id: { status, audio_path, error } }
 jobs: dict[str, dict] = {}
@@ -52,11 +53,12 @@ def _base_ydl_opts() -> dict:
         "quiet": True,
         "no_warnings": True,
         "js_runtimes": {"node": {}},
-        # Download the EJS challenge solver script from GitHub (required for web client)
         "remote_components": "ejs:github",
     }
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 0:
         opts["cookiefile"] = str(COOKIES_FILE)
+    if YTDLP_PROXY:
+        opts["proxy"] = YTDLP_PROXY
     return opts
 
 # Thread pool for blocking I/O and CPU work
