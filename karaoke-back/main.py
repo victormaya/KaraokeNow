@@ -10,8 +10,8 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import replicate
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 import yt_dlp
@@ -109,53 +109,6 @@ def _search_sync(query: str, limit: int) -> list[dict]:
             }
         )
     return results
-
-
-# ── Stream helpers ────────────────────────────────────────────────────────────
-
-EXT_TO_MIME = {
-    "webm": "audio/webm",
-    "m4a":  "audio/mp4",
-    "mp4":  "audio/mp4",
-    "opus": "audio/ogg",
-    "ogg":  "audio/ogg",
-    "mp3":  "audio/mpeg",
-}
-
-def _get_stream_info(video_id: str) -> dict:
-    """Return the best audio direct URL + mime type for a video."""
-    ydl_opts = _base_ydl_opts()
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(
-            f"https://www.youtube.com/watch?v={video_id}",
-            download=False,
-        )
-
-    best_audio = None
-    best_abr = -1
-
-    for fmt in (info.get("formats") or []):
-        if not fmt.get("url"):
-            continue
-        has_audio = fmt.get("acodec") not in (None, "none")
-        no_video  = fmt.get("vcodec") in (None, "none")
-        abr = fmt.get("abr") or 0
-        if has_audio and no_video and abr > best_abr:
-            best_audio = fmt
-            best_abr = abr
-
-    if best_audio is None:
-        for fmt in (info.get("formats") or []):
-            if fmt.get("url") and fmt.get("acodec") not in (None, "none"):
-                best_audio = fmt
-                break
-
-    if best_audio is None:
-        raise ValueError("No streamable audio URL found for this video.")
-
-    url = best_audio["url"]
-    ext = best_audio.get("ext", "webm")
-    return {"url": url, "mime": EXT_TO_MIME.get(ext, "audio/webm")}
 
 
 
@@ -267,52 +220,6 @@ async def search_youtube(q: str, limit: int = 12):
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc))
 
-
-@app.get("/api/stream/{video_id}")
-async def stream_youtube_audio(video_id: str, request: Request):
-    """
-    Proxy YouTube audio stream to the browser.
-    Needed because YouTube CDN blocks direct cross-origin requests.
-    """
-    loop = asyncio.get_running_loop()
-    try:
-        info = await loop.run_in_executor(executor, _get_stream_info, video_id)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
-
-    direct_url: str = info["url"]
-    mime: str = info["mime"]
-
-    upstream_headers = {"User-Agent": "Mozilla/5.0"}
-    range_header = request.headers.get("range")
-    if range_header:
-        upstream_headers["Range"] = range_header
-
-    client = httpx.AsyncClient(follow_redirects=True, timeout=60)
-    resp = await client.send(
-        client.build_request("GET", direct_url, headers=upstream_headers),
-        stream=True,
-    )
-
-    response_headers = {"Cache-Control": "no-cache", "Accept-Ranges": "bytes"}
-    for h in ("content-range", "content-length"):
-        if h in resp.headers:
-            response_headers[h] = resp.headers[h]
-
-    async def generator():
-        try:
-            async for chunk in resp.aiter_bytes(16_384):
-                yield chunk
-        finally:
-            await resp.aclose()
-            await client.aclose()
-
-    return StreamingResponse(
-        generator(),
-        status_code=resp.status_code,
-        media_type=mime,
-        headers=response_headers,
-    )
 
 
 @app.post("/api/process/{video_id}")

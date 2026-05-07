@@ -6,7 +6,12 @@ import Image from "next/image";
 import type { JobStatus } from "@/types";
 import styles from "./page.module.css";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+declare global {
+  interface Window {
+    YT: any;
+    onYouTubeIframeAPIReady: () => void;
+  }
+}
 
 function fmtTime(s: number): string {
   if (!isFinite(s) || s < 0) return "0:00";
@@ -34,16 +39,14 @@ const STATUS_LABEL: Record<string, string> = {
   done:        "Concluído!",
 };
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export default function SongPage() {
   const params       = useParams();
   const searchParams = useSearchParams();
   const router       = useRouter();
 
-  const videoId  = params.id as string;
-  const title    = searchParams.get("title")    ?? "";
-  const channel  = searchParams.get("channel")  ?? "";
+  const videoId   = params.id as string;
+  const title     = searchParams.get("title")     ?? "";
+  const channel   = searchParams.get("channel")   ?? "";
   const thumbnail = searchParams.get("thumbnail") ?? "";
 
   // ── Job state ────────────────────────────────────────────────────────────
@@ -58,11 +61,18 @@ export default function SongPage() {
   const [lyrics,        setLyrics]        = useState<string | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(true);
 
-  // ── Player ───────────────────────────────────────────────────────────────
-  const originalRef = useRef<HTMLAudioElement>(null);
-  const karaokeRef  = useRef<HTMLAudioElement>(null);
+  // ── YouTube IFrame Player ─────────────────────────────────────────────────
+  const ytContainerRef = useRef<HTMLDivElement>(null);
+  const ytPlayerRef    = useRef<any>(null);
+  const [ytReady,      setYtReady]      = useState(false);
+  const timePollerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Karaoke audio ─────────────────────────────────────────────────────────
+  const karaokeRef = useRef<HTMLAudioElement>(null);
+
+  // ── Player state ──────────────────────────────────────────────────────────
   const [playing,      setPlaying]      = useState(false);
-  const [karaokeMode,  setKaraokeMode]  = useState(true);   // true = hear karaoke
+  const [karaokeMode,  setKaraokeMode]  = useState(true);
   const [current,      setCurrent]      = useState(0);
   const [duration,     setDuration]     = useState(0);
   const [audioLoading, setAudioLoading] = useState(true);
@@ -73,17 +83,14 @@ export default function SongPage() {
       pending: 8, downloading: 32, separating: 88, done: 100,
     };
     const target = targets[jobStatus] ?? 0;
-
     if (jobStatus === "done") { setProgress(100); return; }
-
     const id = setInterval(() => {
       setProgress(prev => prev < target ? Math.min(prev + 0.4, target) : prev);
     }, 400);
-
     return () => clearInterval(id);
   }, [jobStatus]);
 
-  // ── Start job & fetch lyrics on mount ────────────────────────────────────
+  // ── Start job & lyrics on mount ──────────────────────────────────────────
   useEffect(() => {
     startJob();
     fetchLyrics();
@@ -96,7 +103,14 @@ export default function SongPage() {
       const res = await fetch(`/api/process/${videoId}`, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
-      startPolling(data.job_id);
+      // Cache hit: backend already returns status "done"
+      if (data.status === "done") {
+        setJobStatus("done");
+        setKaraokeUrl(`/api/audio/${data.job_id}`);
+        setTimeout(() => setReady(true), 600);
+      } else {
+        startPolling(data.job_id);
+      }
     } catch (e) {
       setJobError(e instanceof Error ? e.message : String(e));
     }
@@ -110,7 +124,6 @@ export default function SongPage() {
         if (!res.ok) return;
         const job = await res.json();
         setJobStatus(job.status);
-
         if (job.status === "done") {
           clearPolling();
           setKaraokeUrl(job.audio_url);
@@ -142,62 +155,112 @@ export default function SongPage() {
     setLyricsLoading(false);
   }
 
-  // ── Load audio when ready ────────────────────────────────────────────────
+  // ── Load YouTube IFrame API when job is done ──────────────────────────────
+  useEffect(() => {
+    if (!ready) return;
+
+    const initPlayer = () => {
+      if (!ytContainerRef.current) return;
+      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
+        videoId,
+        playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, playsinline: 1 },
+        events: {
+          onReady: () => {
+            setYtReady(true);
+            setDuration(ytPlayerRef.current.getDuration());
+          },
+          onStateChange: (e: any) => {
+            if (e.data === window.YT.PlayerState.ENDED)    setPlaying(false);
+            if (e.data === window.YT.PlayerState.BUFFERING && !karaokeMode) setAudioLoading(true);
+            if (e.data === window.YT.PlayerState.PLAYING   && !karaokeMode) setAudioLoading(false);
+          },
+        },
+      });
+    };
+
+    if (window.YT?.Player) {
+      initPlayer();
+    } else {
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.head.appendChild(tag);
+      window.onYouTubeIframeAPIReady = initPlayer;
+    }
+
+    return () => { ytPlayerRef.current?.destroy?.(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, videoId]);
+
+  // ── Load karaoke audio when ready ─────────────────────────────────────────
   useEffect(() => {
     if (!ready || !karaokeUrl) return;
-    const orig = originalRef.current;
     const kara = karaokeRef.current;
-    if (!orig || !kara) return;
-
-    orig.src = `/api/stream/${videoId}`;
-    kara.src = karaokeUrl;
-    orig.muted = karaokeMode;
-    kara.muted = !karaokeMode;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (kara) kara.src = karaokeUrl;
   }, [ready, karaokeUrl]);
 
-  // ── Apply mute whenever mode changes ─────────────────────────────────────
+  // ── Poll current time when in original (YouTube) mode ────────────────────
   useEffect(() => {
-    if (originalRef.current) originalRef.current.muted = karaokeMode;
-    if (karaokeRef.current)  karaokeRef.current.muted  = !karaokeMode;
-  }, [karaokeMode]);
+    if (timePollerRef.current) { clearInterval(timePollerRef.current); timePollerRef.current = null; }
+    if (!karaokeMode && playing && ytReady) {
+      timePollerRef.current = setInterval(() => {
+        setCurrent(ytPlayerRef.current?.getCurrentTime?.() ?? 0);
+      }, 250);
+    }
+    return () => { if (timePollerRef.current) clearInterval(timePollerRef.current); };
+  }, [karaokeMode, playing, ytReady]);
 
   // ── Player controls ───────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
-    const orig = originalRef.current;
-    const kara = karaokeRef.current;
-    if (!orig || !kara) return;
     if (playing) {
-      orig.pause(); kara.pause();
+      karaokeRef.current?.pause();
+      ytPlayerRef.current?.pauseVideo?.();
       setPlaying(false);
     } else {
-      orig.play().catch(() => {});
-      kara.play().catch(() => {});
+      if (karaokeMode) {
+        karaokeRef.current?.play().catch(() => {});
+      } else {
+        ytPlayerRef.current?.playVideo?.();
+      }
       setPlaying(true);
     }
-  }, [playing]);
+  }, [playing, karaokeMode]);
 
   function seek(pct: number) {
     if (!duration) return;
     const t = pct * duration;
-    if (originalRef.current) originalRef.current.currentTime = t;
-    if (karaokeRef.current)  karaokeRef.current.currentTime  = t;
+    setCurrent(t);
+    if (karaokeRef.current) karaokeRef.current.currentTime = t;
+    ytPlayerRef.current?.seekTo?.(t, true);
   }
 
   function skip(delta: number) {
-    if (originalRef.current) originalRef.current.currentTime += delta;
-    if (karaokeRef.current)  karaokeRef.current.currentTime  += delta;
+    const t = Math.max(0, current + delta);
+    setCurrent(t);
+    if (karaokeRef.current) karaokeRef.current.currentTime = t;
+    ytPlayerRef.current?.seekTo?.(t, true);
   }
 
   function handleTimeUpdate() {
-    const kara = karaokeRef.current;
-    const orig = originalRef.current;
-    if (!kara || !orig) return;
-    setCurrent(kara.currentTime);
-    // Keep original in sync with karaoke master
-    if (Math.abs(kara.currentTime - orig.currentTime) > 0.5) {
-      orig.currentTime = kara.currentTime;
+    if (karaokeMode && karaokeRef.current) setCurrent(karaokeRef.current.currentTime);
+  }
+
+  // ── Mode switch (sync time between players) ───────────────────────────────
+  function switchMode(toKaraoke: boolean) {
+    if (toKaraoke === karaokeMode) return;
+    if (toKaraoke) {
+      const t = ytPlayerRef.current?.getCurrentTime?.() ?? current;
+      ytPlayerRef.current?.pauseVideo?.();
+      if (karaokeRef.current) {
+        karaokeRef.current.currentTime = t;
+        if (playing) karaokeRef.current.play().catch(() => {});
+      }
+    } else {
+      const t = karaokeRef.current?.currentTime ?? current;
+      karaokeRef.current?.pause();
+      ytPlayerRef.current?.seekTo?.(t, true);
+      if (playing) ytPlayerRef.current?.playVideo?.();
     }
+    setKaraokeMode(toKaraoke);
   }
 
   // ── Error screen ──────────────────────────────────────────────────────────
@@ -205,9 +268,7 @@ export default function SongPage() {
     return (
       <div className={styles.errorPage}>
         <p className={styles.errorMsg}>Erro: {jobError}</p>
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          ← Voltar
-        </button>
+        <button className={styles.backBtn} onClick={() => router.back()}>← Voltar</button>
       </div>
     );
   }
@@ -216,20 +277,15 @@ export default function SongPage() {
   if (!ready) {
     return (
       <div className={styles.loadingPage}>
-        <button className={styles.backBtn} onClick={() => router.back()}>
-          ← Voltar
-        </button>
-
+        <button className={styles.backBtn} onClick={() => router.back()}>← Voltar</button>
         <div className={styles.loadingContent}>
           {thumbnail && (
             <div className={styles.loadingThumb}>
               <Image src={thumbnail} alt={title} fill unoptimized />
             </div>
           )}
-
           <h2 className={styles.loadingTitle}>{title || "Carregando…"}</h2>
           {channel && <p className={styles.loadingChannel}>{channel}</p>}
-
           <div className={styles.progressWrap}>
             <div className={styles.progressTrack}>
               <div
@@ -242,10 +298,7 @@ export default function SongPage() {
             </div>
             <span className={styles.progressPct}>{Math.round(progress)}%</span>
           </div>
-
-          <p className={styles.statusText}>
-            {STATUS_LABEL[jobStatus] ?? "Processando…"}
-          </p>
+          <p className={styles.statusText}>{STATUS_LABEL[jobStatus] ?? "Processando…"}</p>
         </div>
       </div>
     );
@@ -254,12 +307,14 @@ export default function SongPage() {
   // ── Song page (ready) ─────────────────────────────────────────────────────
   return (
     <div className={styles.songPage}>
-      <button className={styles.backBtn} onClick={() => router.back()}>
-        ← Voltar
-      </button>
+      <button className={styles.backBtn} onClick={() => router.back()}>← Voltar</button>
+
+      {/* YouTube IFrame — hidden, only provides audio */}
+      <div style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
+        <div ref={ytContainerRef} />
+      </div>
 
       <div className={styles.splitLayout}>
-
         {/* ── LEFT: Player ───────────────────────────────────────────── */}
         <div className={styles.playerPanel}>
           <div className={styles.songInfo}>
@@ -272,21 +327,16 @@ export default function SongPage() {
             </div>
           </div>
 
-          {/* Hidden audio elements — both play simultaneously */}
-          <audio
-            ref={originalRef}
-            onEnded={() => setPlaying(false)}
-            preload="auto"
-          />
+          {/* Karaoke audio element */}
           <audio
             ref={karaokeRef}
             onLoadedMetadata={() => {
-              setDuration(karaokeRef.current?.duration ?? 0);
+              if (!duration && karaokeRef.current) setDuration(karaokeRef.current.duration);
               setAudioLoading(false);
             }}
             onTimeUpdate={handleTimeUpdate}
-            onWaiting={() => setAudioLoading(true)}
-            onCanPlay={() => setAudioLoading(false)}
+            onWaiting={() => { if (karaokeMode) setAudioLoading(true); }}
+            onCanPlay={() => { if (karaokeMode) setAudioLoading(false); }}
             onEnded={() => setPlaying(false)}
             preload="auto"
           />
@@ -358,33 +408,28 @@ export default function SongPage() {
             <span className={`${styles.switchLabel} ${!karaokeMode ? styles.switchLabelActive : ""}`}>
               Original
             </span>
-
             <button
               className={`${styles.switchTrack} ${karaokeMode ? styles.switchOn : ""}`}
-              onClick={() => setKaraokeMode(m => !m)}
+              onClick={() => switchMode(!karaokeMode)}
               aria-label="Alternar entre original e karaokê"
               role="switch"
               aria-checked={karaokeMode}
             >
               <span className={styles.switchThumb} />
             </button>
-
             <span className={`${styles.switchLabel} ${karaokeMode ? styles.switchLabelActive : ""}`}>
               🎤 Karaokê
             </span>
           </div>
 
           <p className={styles.switchHint}>
-            {karaokeMode
-              ? "Sem vocais — cante você!"
-              : "Versão original com vocais"}
+            {karaokeMode ? "Sem vocais — cante você!" : "Versão original com vocais"}
           </p>
         </div>
 
         {/* ── RIGHT: Lyrics ───────────────────────────────────────────── */}
         <div className={styles.lyricsPanel}>
           <h2 className={styles.lyricsHeading}>Letra</h2>
-
           {lyricsLoading ? (
             <div className={styles.lyricsPlaceholder}>
               <span className={styles.spinner} />
@@ -396,7 +441,6 @@ export default function SongPage() {
             <p className={styles.lyricsEmpty}>Letra não encontrada para esta música.</p>
           )}
         </div>
-
       </div>
     </div>
   );
