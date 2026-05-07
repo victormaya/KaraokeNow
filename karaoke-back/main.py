@@ -41,7 +41,7 @@ jobs: dict[str, dict] = {}
 
 
 def _base_ydl_opts() -> dict:
-    opts: dict = {"quiet": True, "no_warnings": True}
+    opts: dict = {"quiet": True, "no_warnings": True, "js_runtimes": ["nodejs"]}
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 0:
         opts["cookiefile"] = str(COOKIES_FILE)
     return opts
