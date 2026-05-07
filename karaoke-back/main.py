@@ -34,9 +34,17 @@ TEMP_DIR = Path(tempfile.gettempdir()) / "karaoke_jobs"
 TEMP_DIR.mkdir(exist_ok=True)
 
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
+COOKIES_FILE = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
 
 # In-memory job store  { job_id: { status, audio_path, error } }
 jobs: dict[str, dict] = {}
+
+
+def _base_ydl_opts() -> dict:
+    opts: dict = {"quiet": True, "no_warnings": True}
+    if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 0:
+        opts["cookiefile"] = str(COOKIES_FILE)
+    return opts
 
 # Thread pool for blocking I/O and CPU work
 executor = ThreadPoolExecutor(max_workers=4)
@@ -58,8 +66,7 @@ def _format_duration(seconds: Optional[int]) -> str:
 
 def _search_sync(query: str, limit: int) -> list[dict]:
     ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
+        **_base_ydl_opts(),
         "extract_flat": "in_playlist",
         "skip_download": True,
         "default_search": "ytsearch",
@@ -102,10 +109,7 @@ EXT_TO_MIME = {
 
 def _get_stream_info(video_id: str) -> dict:
     """Return the best audio direct URL + mime type for a video."""
-    ydl_opts = {
-        "quiet": True,
-        "no_warnings": True,
-    }
+    ydl_opts = _base_ydl_opts()
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         info = ydl.extract_info(
             f"https://www.youtube.com/watch?v={video_id}",
@@ -155,9 +159,8 @@ def _process_sync(job_id: str, video_id: str) -> None:
         # ── 1. Download audio with yt-dlp ────────────────────────────────
         jobs[job_id]["status"] = "downloading"
         ydl_opts = {
+            **_base_ydl_opts(),
             "outtmpl": str(job_dir / "original.%(ext)s"),
-            "quiet": True,
-            "no_warnings": True,
             "format": "bestaudio[abr<=96]/bestaudio[abr<=128]/bestaudio/best",
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
