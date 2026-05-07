@@ -45,8 +45,8 @@ def _base_ydl_opts() -> dict:
         "quiet": True,
         "no_warnings": True,
         "js_runtimes": {"node": {}},
-        # Use mobile/TV clients — they don't need JS runtime and are less bot-blocked
-        "extractor_args": {"youtube": {"player_client": ["ios", "tv_embedded", "web"]}},
+        # Download the EJS challenge solver script from GitHub (required for web client)
+        "remote_components": "ejs:github",
     }
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 0:
         opts["cookiefile"] = str(COOKIES_FILE)
