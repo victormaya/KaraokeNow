@@ -181,10 +181,21 @@ def _process_sync(job_id: str, video_id: str) -> None:
             raise ValueError(f"Could not find instrumental track. Replicate output: {output}")
 
         # ── 3. Save to persistent cache ───────────────────────────────────
+        import subprocess
         cache_entry = CACHE_DIR / video_id
         cache_entry.mkdir(parents=True, exist_ok=True)
         instrumental = cache_entry / "instrumental.mp3"
         instrumental.write_bytes(output["other"].read())
+
+        # Keep original audio in cache for playback
+        original = cache_entry / "original.mp3"
+        if downloaded.suffix.lower() == ".mp3":
+            shutil.copy2(downloaded, original)
+        else:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", str(downloaded), "-q:a", "2", "-map", "a", str(original)],
+                check=True, capture_output=True,
+            )
 
         downloaded.unlink(missing_ok=True)
         shutil.rmtree(job_dir, ignore_errors=True)
@@ -284,6 +295,20 @@ async def stream_audio(job_id: str):
         path=path,
         media_type="audio/mpeg",
         filename="instrumental.mp3",
+        headers={"Cache-Control": "no-cache, no-store"},
+    )
+
+
+@app.get("/api/original/{video_id}")
+async def stream_original(video_id: str):
+    """Return the original audio (with vocals)."""
+    path = CACHE_DIR / video_id / "original.mp3"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Original audio not cached.")
+    return FileResponse(
+        path=path,
+        media_type="audio/mpeg",
+        filename="original.mp3",
         headers={"Cache-Control": "no-cache, no-store"},
     )
 

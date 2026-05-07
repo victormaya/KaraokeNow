@@ -21,13 +21,6 @@ function parseLrc(lrc: string): LrcLine[] {
   return lines.sort((a, b) => a.time - b.time);
 }
 
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
-}
-
 function fmtTime(s: number): string {
   if (!isFinite(s) || s < 0) return "0:00";
   const m = Math.floor(s / 60);
@@ -78,13 +71,9 @@ export default function SongPage() {
   const [lyricsLoading, setLyricsLoading] = useState(true);
   const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
 
-  // ── YouTube IFrame Player ─────────────────────────────────────────────────
-  const ytContainerRef = useRef<HTMLDivElement>(null);
-  const ytPlayerRef    = useRef<any>(null);
-  const [ytReady,      setYtReady]      = useState(false);
-
-  // ── Karaoke audio ─────────────────────────────────────────────────────────
-  const karaokeRef = useRef<HTMLAudioElement>(null);
+  // ── Audio refs ────────────────────────────────────────────────────────────
+  const karaokeRef  = useRef<HTMLAudioElement>(null);
+  const originalRef = useRef<HTMLAudioElement>(null);
 
   // ── Player state ──────────────────────────────────────────────────────────
   const [playing,      setPlaying]      = useState(false);
@@ -191,60 +180,25 @@ export default function SongPage() {
     }
   }, [activeLineIdx]);
 
-  // ── Load YouTube IFrame API when job is done ──────────────────────────────
-  useEffect(() => {
-    if (!ready) return;
-
-    const initPlayer = () => {
-      if (!ytContainerRef.current) return;
-      ytPlayerRef.current = new window.YT.Player(ytContainerRef.current, {
-        videoId,
-        playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, playsinline: 1 },
-        events: {
-          onReady: () => {
-            ytPlayerRef.current.mute(); // always starts muted; karaoke audio is source of truth
-            setYtReady(true);
-            setDuration(ytPlayerRef.current.getDuration());
-          },
-          onStateChange: (e: any) => {
-            if (e.data === window.YT.PlayerState.ENDED) setPlaying(false);
-          },
-        },
-      });
-    };
-
-    if (window.YT?.Player) {
-      initPlayer();
-    } else {
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.head.appendChild(tag);
-      window.onYouTubeIframeAPIReady = initPlayer;
-    }
-
-    return () => { ytPlayerRef.current?.destroy?.(); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, videoId]);
-
-  // ── Load karaoke audio when ready ─────────────────────────────────────────
+  // ── Load audio when ready ─────────────────────────────────────────────────
   useEffect(() => {
     if (!ready || !karaokeUrl) return;
-    const kara = karaokeRef.current;
-    if (kara) kara.src = karaokeUrl;
-  }, [ready, karaokeUrl]);
+    if (karaokeRef.current)  karaokeRef.current.src  = karaokeUrl;
+    if (originalRef.current) originalRef.current.src = `/api/original/${videoId}`;
+  }, [ready, karaokeUrl, videoId]);
 
   // ── Player controls ───────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     if (playing) {
       karaokeRef.current?.pause();
-      ytPlayerRef.current?.pauseVideo?.();
+      originalRef.current?.pause();
       setPlaying(false);
     } else {
-      // Sync YT to karaoke position before starting both
+      // Sync original to karaoke position before starting both
       const t = karaokeRef.current?.currentTime ?? 0;
-      ytPlayerRef.current?.seekTo?.(t, true);
+      if (originalRef.current) originalRef.current.currentTime = t;
       karaokeRef.current?.play().catch(() => {});
-      ytPlayerRef.current?.playVideo?.();
+      originalRef.current?.play().catch(() => {});
       setPlaying(true);
     }
   }, [playing]);
@@ -253,15 +207,8 @@ export default function SongPage() {
     if (!duration) return;
     const t = pct * duration;
     setCurrent(t);
-    if (karaokeRef.current) karaokeRef.current.currentTime = t;
-    ytPlayerRef.current?.seekTo?.(t, true);
-  }
-
-  function skip(delta: number) {
-    const t = Math.max(0, current + delta);
-    setCurrent(t);
-    if (karaokeRef.current) karaokeRef.current.currentTime = t;
-    ytPlayerRef.current?.seekTo?.(t, true);
+    if (karaokeRef.current)  karaokeRef.current.currentTime  = t;
+    if (originalRef.current) originalRef.current.currentTime = t;
   }
 
   function handleTimeUpdate() {
@@ -271,16 +218,10 @@ export default function SongPage() {
   // ── Mode switch — both keep playing, just swap which has volume ───────────
   function switchMode(toKaraoke: boolean) {
     if (toKaraoke === karaokeMode) return;
-    if (toKaraoke) {
-      ytPlayerRef.current?.mute?.();
-      if (karaokeRef.current) karaokeRef.current.muted = false;
-    } else {
-      // Sync YT to karaoke before unmuting
-      const t = karaokeRef.current?.currentTime ?? current;
-      ytPlayerRef.current?.seekTo?.(t, true);
-      ytPlayerRef.current?.unMute?.();
-      if (karaokeRef.current) karaokeRef.current.muted = true;
-    }
+    const t = karaokeRef.current?.currentTime ?? current;
+    if (originalRef.current) originalRef.current.currentTime = t;
+    karaokeRef.current  && (karaokeRef.current.muted  = !toKaraoke);
+    originalRef.current && (originalRef.current.muted =  toKaraoke);
     setKaraokeMode(toKaraoke);
   }
 
@@ -345,12 +286,7 @@ export default function SongPage() {
             </div>
           </div>
 
-          {/* YouTube iframe — off-screen so browser allows audio */}
-          <div style={{ position: "fixed", left: -9999, top: -9999, width: 480, height: 270, pointerEvents: "none" }}>
-            <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }} />
-          </div>
-
-          {/* Karaoke audio element */}
+          {/* Karaoke audio (instrumental, no vocals) */}
           <audio
             ref={karaokeRef}
             onLoadedMetadata={() => {
@@ -363,6 +299,8 @@ export default function SongPage() {
             onEnded={() => setPlaying(false)}
             preload="auto"
           />
+          {/* Original audio (with vocals) — muted by default */}
+          <audio ref={originalRef} muted preload="auto" />
 
           {/* Controls */}
           <div className={styles.controls}>
