@@ -1,0 +1,51 @@
+# Ambiente virtual
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Arquivos gerados pelo processamento de áudio
+downloads/
+output/
+separated/
+*.mp3
+*.wav
+*.flac
+*.m4a
+*.webm
+
+# Modelos de ML baixados pelo audio-separator
+models/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+
+# Variáveis de ambiente
+.env
+.env.local
+.env.*.local
+
+# Jobs temporários / cache
+jobs/
+cache/
+tmp/
+temp/
+
+# macOS
+.DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

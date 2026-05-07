@@ -1,0 +1,271 @@
+/* ─── Dock bar at the bottom ────────────────────────────────────── */
+.dock {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(13, 13, 25, 0.92);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-top: 1px solid var(--border);
+  padding: 14px 24px 20px;
+  z-index: 100;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ─── Layout ─────────────────────────────────────────────────────── */
+.inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 20px;
+}
+
+/* ─── Song info (left) ───────────────────────────────────────────── */
+.songInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.meta { min-width: 0; }
+
+.title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--text-primary);
+}
+
+.channel {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.karaokeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  background: rgba(200, 80, 192, 0.12);
+  border: 1px solid rgba(200, 80, 192, 0.3);
+  border-radius: 99px;
+  padding: 2px 8px;
+  margin-top: 4px;
+}
+
+/* ─── Controls (centre) ──────────────────────────────────────────── */
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.playRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.playBtn {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--transition), transform var(--transition);
+  color: #fff;
+}
+
+.playBtn:hover { opacity: 0.85; transform: scale(1.05); }
+.playBtn:active { transform: scale(0.97); }
+.playBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.btnSpinner {
+  display: block;
+  width: 18px; height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  border-radius: 6px;
+  transition: color var(--transition), background var(--transition);
+}
+
+.iconBtn:hover { color: var(--text-primary); background: var(--surface-2); }
+
+/* ─── Progress bar ───────────────────────────────────────────────── */
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 320px;
+}
+
+.time {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+}
+.time:last-child { text-align: right; }
+
+.trackBg {
+  flex: 1;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 99px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+
+.trackFill {
+  height: 100%;
+  background: var(--accent-grad);
+  border-radius: 99px;
+  pointer-events: none;
+  transition: width 0.15s linear;
+}
+
+/* ─── Karaoke button (right) ─────────────────────────────────────── */
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+}
+
+.karaokeBtn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition),
+    box-shadow var(--transition);
+}
+
+.karaokeBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.1);
+  box-shadow: 0 0 16px rgba(200, 80, 192, 0.2);
+}
+
+.karaokeBtn.active {
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.15);
+  color: #fff;
+}
+
+.karaokeBtn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ─── Processing state ───────────────────────────────────────────── */
+.statusRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--surface-3);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.errorText {
+  font-size: 0.78rem;
+  color: #ff5a5a;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ─── Volume ─────────────────────────────────────────────────────── */
+.volumeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeSlider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 80px;
+  height: 4px;
+  background: var(--surface-3);
+  border-radius: 99px;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────── */
+@media (max-width: 768px) {
+  .inner {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  .controls { width: 100%; }
+  .progressRow { width: 100%; }
+  .actions { justify-content: center; }
+  .songInfo { justify-content: center; }
+}

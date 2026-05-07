@@ -1,0 +1,18 @@
+services:
+  backend:
+    build: ./karaoke-back
+    ports:
+      - "8000:8000"
+    environment:
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+    restart: unless-stopped
+
+  frontend:
+    build: ./karaoke-front
+    ports:
+      - "3000:3000"
+    environment:
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -1,0 +1,6 @@
+# Variáveis de ambiente (nunca commitar!)
+.env
+.env.local
+
+# macOS
+.DS_Store

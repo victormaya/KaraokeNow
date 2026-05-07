@@ -1,0 +1,78 @@
+/* ─── Reset & Base ──────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Brand colours */
+  --accent:        #c850c0;
+  --accent-alt:    #4158d0;
+  --accent-grad:   linear-gradient(135deg, #4158d0 0%, #c850c0 50%, #ffcc70 100%);
+  --neon-pink:     #ff2d78;
+  --neon-blue:     #00d4ff;
+
+  /* Surfaces */
+  --bg:            #0a0a12;
+  --surface:       #13131f;
+  --surface-2:     #1c1c2e;
+  --surface-3:     #252540;
+  --border:        rgba(255,255,255,0.07);
+  --border-hover:  rgba(200,80,192,0.4);
+
+  /* Text */
+  --text-primary:  #f0f0ff;
+  --text-secondary:#9898bb;
+  --text-muted:    #555570;
+
+  /* Misc */
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --shadow:     0 8px 32px rgba(0,0,0,0.5);
+  --transition: 0.2s ease;
+}
+
+html {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", Arial, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text-primary);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─── Global focus ──────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* ─── Utilities ─────────────────────────────────────────────────── */
+.sr-only {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+  border: 0;
+}
