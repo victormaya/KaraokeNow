@@ -156,6 +156,21 @@
   background: var(--surface);
 }
 
+/* Media block: thumbnail OR youtube embed */
+.mediaBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ytEmbed {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+}
+
 /* Song info */
 .songInfo {
   display: flex;

@@ -346,21 +346,30 @@ export default function SongPage() {
     <div className={styles.songPage}>
       <button className={styles.backBtn} onClick={() => router.back()}>← Voltar</button>
 
-      {/* YouTube IFrame — hidden, only provides audio */}
-      <div style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" }}>
-        <div ref={ytContainerRef} />
-      </div>
-
       <div className={styles.splitLayout}>
         {/* ── LEFT: Player ───────────────────────────────────────────── */}
         <div className={styles.playerPanel}>
-          <div className={styles.songInfo}>
-            <div className={styles.songThumb}>
-              <Image src={thumbnail} alt={title} fill unoptimized />
+
+          {/* Thumbnail (karaoke mode) or YouTube iframe (original mode) */}
+          <div className={styles.mediaBlock}>
+            <div className={styles.songInfo}>
+              <div
+                className={styles.songThumb}
+                style={{ display: karaokeMode ? undefined : "none" }}
+              >
+                <Image src={thumbnail} alt={title} fill unoptimized />
+              </div>
+              <div className={styles.songMeta}>
+                <h1 className={styles.songTitle}>{title}</h1>
+                <p className={styles.songChannel}>{channel}</p>
+              </div>
             </div>
-            <div className={styles.songMeta}>
-              <h1 className={styles.songTitle}>{title}</h1>
-              <p className={styles.songChannel}>{channel}</p>
+            {/* YouTube iframe — visible in original mode, tiny in karaoke mode */}
+            <div
+              className={styles.ytEmbed}
+              style={karaokeMode ? { width: 1, height: 1, overflow: "hidden", opacity: 0, pointerEvents: "none" } : undefined}
+            >
+              <div ref={ytContainerRef} style={{ width: "100%", height: "100%" }} />
             </div>
           </div>
 
