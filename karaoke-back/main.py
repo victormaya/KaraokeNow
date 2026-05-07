@@ -52,8 +52,8 @@ def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
-        "js_runtimes": "node",
-        "remote_components": "ejs:github",
+        "js_runtimes": {"node": {}},
+        "remote_components": ["ejs:github"],
     }
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 100:
         opts["cookiefile"] = str(COOKIES_FILE)
