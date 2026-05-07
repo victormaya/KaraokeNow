@@ -341,39 +341,8 @@ export default function SongPage() {
             preload="auto"
           />
 
-          {/* Seek bar */}
-          <div
-            className={styles.seekBar}
-            role="slider"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={duration ? Math.round((current / duration) * 100) : 0}
-            tabIndex={0}
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              seek((e.clientX - rect.left) / rect.width);
-            }}
-          >
-            <div
-              className={styles.seekFill}
-              style={{ width: duration ? `${(current / duration) * 100}%` : "0%" }}
-            />
-          </div>
-          <div className={styles.timeRow}>
-            <span>{fmtTime(current)}</span>
-            <span>{fmtTime(duration)}</span>
-          </div>
-
           {/* Controls */}
           <div className={styles.controls}>
-            <button className={styles.iconBtn} onClick={() => skip(-10)} aria-label="Voltar 10s">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="1 4 1 10 7 10" />
-                <path d="M3.51 15a9 9 0 1 0 .49-3.5" />
-              </svg>
-            </button>
-
             <button
               className={styles.playBtn}
               onClick={togglePlay}
@@ -392,14 +361,6 @@ export default function SongPage() {
                   <polygon points="5,3 19,12 5,21" />
                 </svg>
               )}
-            </button>
-
-            <button className={styles.iconBtn} onClick={() => skip(10)} aria-label="Avançar 10s">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="23 4 23 10 17 10" />
-                <path d="M20.49 15a9 9 0 1 1-.49-3.5" />
-              </svg>
             </button>
           </div>
 

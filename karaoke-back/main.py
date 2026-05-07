@@ -55,7 +55,7 @@ def _base_ydl_opts() -> dict:
         "js_runtimes": {"node": {}},
         "remote_components": "ejs:github",
     }
-    if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 0:
+    if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 100:
         opts["cookiefile"] = str(COOKIES_FILE)
     if YTDLP_PROXY:
         opts["proxy"] = YTDLP_PROXY
