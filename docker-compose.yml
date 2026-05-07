@@ -6,7 +6,7 @@ services:
     environment:
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
     volumes:
-      - ./cookies.txt:/app/cookies.txt:ro
+      - ./cookies.txt:/app/cookies.txt
     restart: unless-stopped
 
   frontend:
