@@ -161,7 +161,7 @@ def _process_sync(job_id: str, video_id: str) -> None:
         ydl_opts = {
             **_base_ydl_opts(),
             "outtmpl": str(job_dir / "original.%(ext)s"),
-            "format": "bestaudio[abr<=96]/bestaudio[abr<=128]/bestaudio/best",
+            "format": "bestaudio/best",
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
