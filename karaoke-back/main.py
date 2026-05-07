@@ -33,11 +33,17 @@ app.add_middleware(
 TEMP_DIR = Path(tempfile.gettempdir()) / "karaoke_jobs"
 TEMP_DIR.mkdir(exist_ok=True)
 
+CACHE_DIR = Path(os.environ.get("CACHE_DIR", "/app/cache"))
+CACHE_DIR.mkdir(exist_ok=True)
+
 REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 COOKIES_FILE = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
 
 # In-memory job store  { job_id: { status, audio_path, error } }
 jobs: dict[str, dict] = {}
+
+# Dedup in-flight: video_id -> job_id
+video_to_job: dict[str, str] = {}
 
 
 def _base_ydl_opts() -> dict:
@@ -218,11 +224,14 @@ def _process_sync(job_id: str, video_id: str) -> None:
         if not isinstance(output, dict) or not output.get("other"):
             raise ValueError(f"Could not find instrumental track. Replicate output: {output}")
 
-        # ── 3. Save instrumental ──────────────────────────────────────────
-        instrumental = job_dir / "instrumental.mp3"
+        # ── 3. Save to persistent cache ───────────────────────────────────
+        cache_entry = CACHE_DIR / video_id
+        cache_entry.mkdir(parents=True, exist_ok=True)
+        instrumental = cache_entry / "instrumental.mp3"
         instrumental.write_bytes(output["other"].read())
 
         downloaded.unlink(missing_ok=True)
+        shutil.rmtree(job_dir, ignore_errors=True)
 
         jobs[job_id] = {
             "status": "done",
@@ -236,6 +245,7 @@ def _process_sync(job_id: str, video_id: str) -> None:
             "audio_path": None,
             "error": str(exc),
         }
+        video_to_job.pop(video_id, None)
 
 
 # ─────────────────────────────────────────────
@@ -305,8 +315,23 @@ async def stream_youtube_audio(video_id: str, request: Request):
 @app.post("/api/process/{video_id}")
 async def start_processing(video_id: str, background_tasks: BackgroundTasks):
     """Kick off vocal-removal job and return a job_id to poll."""
+    # 1. Cache hit — return instantly
+    cached = CACHE_DIR / video_id / "instrumental.mp3"
+    if cached.exists():
+        job_id = str(uuid.uuid4())
+        jobs[job_id] = {"status": "done", "audio_path": str(cached), "error": None}
+        return JSONResponse({"job_id": job_id, "status": "done"})
+
+    # 2. Already processing — return existing job
+    if video_id in video_to_job:
+        existing = video_to_job[video_id]
+        if existing in jobs:
+            return JSONResponse({"job_id": existing, "status": jobs[existing]["status"]})
+
+    # 3. New job
     job_id = str(uuid.uuid4())
     jobs[job_id] = {"status": "pending", "audio_path": None, "error": None}
+    video_to_job[video_id] = job_id
 
     async def _run():
         loop = asyncio.get_running_loop()
@@ -355,7 +380,7 @@ async def stream_audio(job_id: str):
 
 @app.delete("/api/job/{job_id}")
 async def cleanup_job(job_id: str):
-    """Delete temp files for a finished job."""
+    """Remove job from memory. Cache files are kept for future requests."""
     job_dir = TEMP_DIR / job_id
     if job_dir.exists():
         shutil.rmtree(job_dir, ignore_errors=True)
