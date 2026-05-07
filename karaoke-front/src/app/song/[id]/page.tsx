@@ -82,7 +82,6 @@ export default function SongPage() {
   const ytContainerRef = useRef<HTMLDivElement>(null);
   const ytPlayerRef    = useRef<any>(null);
   const [ytReady,      setYtReady]      = useState(false);
-  const timePollerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Karaoke audio ─────────────────────────────────────────────────────────
   const karaokeRef = useRef<HTMLAudioElement>(null);
@@ -203,13 +202,12 @@ export default function SongPage() {
         playerVars: { autoplay: 0, controls: 0, disablekb: 1, fs: 0, playsinline: 1 },
         events: {
           onReady: () => {
+            ytPlayerRef.current.mute(); // always starts muted; karaoke audio is source of truth
             setYtReady(true);
             setDuration(ytPlayerRef.current.getDuration());
           },
           onStateChange: (e: any) => {
-            if (e.data === window.YT.PlayerState.ENDED)    setPlaying(false);
-            if (e.data === window.YT.PlayerState.BUFFERING && !karaokeMode) setAudioLoading(true);
-            if (e.data === window.YT.PlayerState.PLAYING   && !karaokeMode) setAudioLoading(false);
+            if (e.data === window.YT.PlayerState.ENDED) setPlaying(false);
           },
         },
       });
@@ -235,17 +233,6 @@ export default function SongPage() {
     if (kara) kara.src = karaokeUrl;
   }, [ready, karaokeUrl]);
 
-  // ── Poll current time when in original (YouTube) mode ────────────────────
-  useEffect(() => {
-    if (timePollerRef.current) { clearInterval(timePollerRef.current); timePollerRef.current = null; }
-    if (!karaokeMode && playing && ytReady) {
-      timePollerRef.current = setInterval(() => {
-        setCurrent(ytPlayerRef.current?.getCurrentTime?.() ?? 0);
-      }, 250);
-    }
-    return () => { if (timePollerRef.current) clearInterval(timePollerRef.current); };
-  }, [karaokeMode, playing, ytReady]);
-
   // ── Player controls ───────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
     if (playing) {
@@ -253,14 +240,14 @@ export default function SongPage() {
       ytPlayerRef.current?.pauseVideo?.();
       setPlaying(false);
     } else {
-      if (karaokeMode) {
-        karaokeRef.current?.play().catch(() => {});
-      } else {
-        ytPlayerRef.current?.playVideo?.();
-      }
+      // Sync YT to karaoke position before starting both
+      const t = karaokeRef.current?.currentTime ?? 0;
+      ytPlayerRef.current?.seekTo?.(t, true);
+      karaokeRef.current?.play().catch(() => {});
+      ytPlayerRef.current?.playVideo?.();
       setPlaying(true);
     }
-  }, [playing, karaokeMode]);
+  }, [playing]);
 
   function seek(pct: number) {
     if (!duration) return;
@@ -278,24 +265,21 @@ export default function SongPage() {
   }
 
   function handleTimeUpdate() {
-    if (karaokeMode && karaokeRef.current) setCurrent(karaokeRef.current.currentTime);
+    if (karaokeRef.current) setCurrent(karaokeRef.current.currentTime);
   }
 
-  // ── Mode switch (sync time between players) ───────────────────────────────
+  // ── Mode switch — both keep playing, just swap which has volume ───────────
   function switchMode(toKaraoke: boolean) {
     if (toKaraoke === karaokeMode) return;
     if (toKaraoke) {
-      const t = ytPlayerRef.current?.getCurrentTime?.() ?? current;
-      ytPlayerRef.current?.pauseVideo?.();
-      if (karaokeRef.current) {
-        karaokeRef.current.currentTime = t;
-        if (playing) karaokeRef.current.play().catch(() => {});
-      }
+      ytPlayerRef.current?.mute?.();
+      if (karaokeRef.current) karaokeRef.current.muted = false;
     } else {
+      // Sync YT to karaoke before unmuting
       const t = karaokeRef.current?.currentTime ?? current;
-      karaokeRef.current?.pause();
       ytPlayerRef.current?.seekTo?.(t, true);
-      if (playing) ytPlayerRef.current?.playVideo?.();
+      ytPlayerRef.current?.unMute?.();
+      if (karaokeRef.current) karaokeRef.current.muted = true;
     }
     setKaraokeMode(toKaraoke);
   }
@@ -381,8 +365,8 @@ export default function SongPage() {
               setAudioLoading(false);
             }}
             onTimeUpdate={handleTimeUpdate}
-            onWaiting={() => { if (karaokeMode) setAudioLoading(true); }}
-            onCanPlay={() => { if (karaokeMode) setAudioLoading(false); }}
+            onWaiting={() => setAudioLoading(true)}
+            onCanPlay={() => setAudioLoading(false)}
             onEnded={() => setPlaying(false)}
             preload="auto"
           />
