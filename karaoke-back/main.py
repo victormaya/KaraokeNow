@@ -300,20 +300,27 @@ async def cleanup_job(job_id: str):
 
 @app.get("/api/lyrics")
 async def get_lyrics(artist: str = "", title: str = ""):
-    """Proxy to lyrics.ovh — avoids browser CORS issues."""
+    """Proxy to lrclib.net — returns synced LRC and plain lyrics."""
     from urllib.parse import quote
     if not artist and not title:
-        return JSONResponse({"lyrics": ""})
+        return JSONResponse({"lrc": None, "lyrics": None})
     try:
-        url = f"https://api.lyrics.ovh/v1/{quote(artist.strip())}/{quote(title.strip())}"
+        url = (
+            f"https://lrclib.net/api/get"
+            f"?artist_name={quote(artist.strip())}"
+            f"&track_name={quote(title.strip())}"
+        )
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url)
+            resp = await client.get(url, headers={"Lrclib-Client": "KaraokeNow/1.0"})
             if resp.status_code == 200:
                 data = resp.json()
-                return JSONResponse({"lyrics": data.get("lyrics", "")})
+                return JSONResponse({
+                    "lrc":    data.get("syncedLyrics") or None,
+                    "lyrics": data.get("plainLyrics")  or None,
+                })
     except Exception:
         pass
-    return JSONResponse({"lyrics": ""})
+    return JSONResponse({"lrc": None, "lyrics": None})
 
 
 @app.get("/health")

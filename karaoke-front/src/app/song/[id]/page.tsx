@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import type { JobStatus } from "@/types";
 import styles from "./page.module.css";
+
+interface LrcLine { time: number; text: string; }
+
+function parseLrc(lrc: string): LrcLine[] {
+  const re = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
+  const lines: LrcLine[] = [];
+  for (const raw of lrc.split("\n")) {
+    const m = raw.match(re);
+    if (!m) continue;
+    const time = parseInt(m[1]) * 60 + parseInt(m[2]) + parseInt(m[3]) / (m[3].length === 3 ? 1000 : 100);
+    const text = m[4].trim();
+    if (text) lines.push({ time, text });
+  }
+  return lines.sort((a, b) => a.time - b.time);
+}
 
 declare global {
   interface Window {
@@ -58,8 +73,10 @@ export default function SongPage() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Lyrics ───────────────────────────────────────────────────────────────
+  const [lrcLines,      setLrcLines]      = useState<LrcLine[]>([]);
   const [lyrics,        setLyrics]        = useState<string | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(true);
+  const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
 
   // ── YouTube IFrame Player ─────────────────────────────────────────────────
   const ytContainerRef = useRef<HTMLDivElement>(null);
@@ -149,11 +166,31 @@ export default function SongPage() {
       const res = await fetch(`/api/lyrics?${q}`);
       if (res.ok) {
         const data = await res.json();
-        setLyrics(data.lyrics || null);
+        if (data.lrc) {
+          setLrcLines(parseLrc(data.lrc));
+        } else {
+          setLyrics(data.lyrics || null);
+        }
       }
     } catch { /* ignore */ }
     setLyricsLoading(false);
   }
+
+  const activeLineIdx = useMemo(() => {
+    if (!lrcLines.length) return -1;
+    let idx = -1;
+    for (let i = 0; i < lrcLines.length; i++) {
+      if (lrcLines[i].time <= current) idx = i;
+      else break;
+    }
+    return idx;
+  }, [lrcLines, current]);
+
+  useEffect(() => {
+    if (activeLineIdx >= 0 && lineRefs.current[activeLineIdx]) {
+      lineRefs.current[activeLineIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [activeLineIdx]);
 
   // ── Load YouTube IFrame API when job is done ──────────────────────────────
   useEffect(() => {
@@ -395,6 +432,22 @@ export default function SongPage() {
             <div className={styles.lyricsPlaceholder}>
               <span className={styles.spinner} />
               <span>Carregando letra…</span>
+            </div>
+          ) : lrcLines.length > 0 ? (
+            <div className={styles.lyricsLines}>
+              {lrcLines.map((line, i) => (
+                <p
+                  key={i}
+                  ref={el => { lineRefs.current[i] = el; }}
+                  className={[
+                    styles.lyricsLine,
+                    i === activeLineIdx ? styles.lyricsLineActive : "",
+                    i < activeLineIdx  ? styles.lyricsLinePast   : "",
+                  ].join(" ")}
+                >
+                  {line.text}
+                </p>
+              ))}
             </div>
           ) : lyrics ? (
             <pre className={styles.lyricsText}>{lyrics}</pre>

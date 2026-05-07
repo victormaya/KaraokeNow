@@ -380,3 +380,33 @@
   color: var(--text-muted);
   font-style: italic;
 }
+
+/* ─── Synced lyrics ──────────────────────────────────────────────────────── */
+
+.lyricsLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 40vh;
+}
+
+.lyricsLine {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: var(--text-muted);
+  padding: 6px 0;
+  transition: color 0.3s ease, font-size 0.25s ease, font-weight 0.25s ease;
+  cursor: default;
+  user-select: none;
+}
+
+.lyricsLinePast {
+  color: var(--text-secondary);
+  opacity: 0.45;
+}
+
+.lyricsLineActive {
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  font-weight: 700;
+}
