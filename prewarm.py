@@ -85,7 +85,7 @@ def collect_tracks(base_url: str, genres: list[str]) -> dict[str, str]:
             if not song:
                 continue
 
-            vid = song["videoId"]
+            vid = song["id"]
             if vid not in tracks:
                 tracks[vid] = song.get("title", query)
                 print(f"    + {tracks[vid][:70]}")
