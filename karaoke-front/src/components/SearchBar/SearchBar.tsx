@@ -6,10 +6,11 @@ import styles from "./SearchBar.module.css";
 interface Props {
   onSearch: (query: string) => void;
   loading?: boolean;
+  defaultValue?: string;
 }
 
-export default function SearchBar({ onSearch, loading }: Props) {
-  const [value, setValue] = useState("");
+export default function SearchBar({ onSearch, loading, defaultValue = "" }: Props) {
+  const [value, setValue] = useState(defaultValue);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();

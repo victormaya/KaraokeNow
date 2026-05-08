@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, Suspense } from "react";
 import Image from "next/image";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { Song } from "@/types";
 import SearchBar from "@/components/SearchBar/SearchBar";
 import SongGrid from "@/components/SongGrid/SongGrid";
@@ -13,14 +14,19 @@ interface TrendingTrack {
   art: string;
 }
 
-export default function Home() {
-  const [songs,         setSongs]         = useState<Song[]>([]);
-  const [searching,     setSearching]     = useState(false);
-  const [searchError,   setSearchError]   = useState<string | null>(null);
-  const [hasSearched,   setHasSearched]   = useState(false);
-  const [trending,      setTrending]      = useState<TrendingTrack[]>([]);
-  const [trendingLoad,  setTrendingLoad]  = useState(true);
+// ── Inner component uses useSearchParams (requires Suspense boundary) ────────
+function HomeContent() {
+  const router       = useRouter();
+  const searchParams = useSearchParams();
+  const query        = searchParams.get("q") ?? "";
 
+  const [songs,        setSongs]        = useState<Song[]>([]);
+  const [searching,    setSearching]    = useState(false);
+  const [searchError,  setSearchError]  = useState<string | null>(null);
+  const [trending,     setTrending]     = useState<TrendingTrack[]>([]);
+  const [trendingLoad, setTrendingLoad] = useState(true);
+
+  // Fetch trending once
   useEffect(() => {
     fetch("/api/trending")
       .then(r => r.json())
@@ -29,27 +35,34 @@ export default function Home() {
       .finally(() => setTrendingLoad(false));
   }, []);
 
-  const handleSearch = useCallback(async (query: string) => {
+  // React to URL query changes (handles back/forward and direct links)
+  useEffect(() => {
+    if (!query) {
+      setSongs([]);
+      setSearchError(null);
+      return;
+    }
     setSearching(true);
     setSearchError(null);
     setSongs([]);
-    setHasSearched(true);
-    try {
-      const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=12`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setSongs(data.results ?? []);
-      if ((data.results ?? []).length === 0)
-        setSearchError("Nenhuma música encontrada. Tente outra busca.");
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setSearchError(`Erro ao buscar: ${msg}`);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
+    fetch(`/api/search?q=${encodeURIComponent(query)}&limit=12`)
+      .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
+      .then(d => {
+        setSongs(d.results ?? []);
+        if ((d.results ?? []).length === 0)
+          setSearchError("Nenhuma música encontrada. Tente outra busca.");
+      })
+      .catch(e => setSearchError(`Erro ao buscar: ${e instanceof Error ? e.message : e}`))
+      .finally(() => setSearching(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query]);
 
-  const showTrending = !hasSearched && !searching;
+  // handleSearch only updates the URL — the effect above does the work
+  const handleSearch = useCallback((q: string) => {
+    router.push(`/?q=${encodeURIComponent(q.trim())}`);
+  }, [router]);
+
+  const showTrending = !query && !searching;
 
   return (
     <div className={styles.page}>
@@ -63,7 +76,7 @@ export default function Home() {
           Busque qualquer música do YouTube e remova os vocais instantaneamente.
           Karaokê sem limites.
         </p>
-        <SearchBar onSearch={handleSearch} loading={searching} />
+        <SearchBar onSearch={handleSearch} loading={searching} defaultValue={query} />
       </header>
 
       <main className={styles.main}>
@@ -103,13 +116,7 @@ export default function Home() {
                   >
                     <div className={styles.trendingRank} data-top={i < 3 ? "true" : undefined}>{i + 1}</div>
                     <div className={styles.trendingArt}>
-                      <Image
-                        src={track.art}
-                        alt={track.name}
-                        fill
-                        unoptimized
-                        sizes="64px"
-                      />
+                      <Image src={track.art} alt={track.name} fill unoptimized sizes="44px" />
                     </div>
                     <div className={styles.trendingInfo}>
                       <span className={styles.trendingName}>{track.name}</span>
@@ -125,5 +132,14 @@ export default function Home() {
         )}
       </main>
     </div>
+  );
+}
+
+// ── Suspense wrapper required by useSearchParams in Next.js App Router ───────
+export default function Home() {
+  return (
+    <Suspense>
+      <HomeContent />
+    </Suspense>
   );
 }
