@@ -532,6 +532,29 @@ export default function SongClient() {
               title="Aumentar tom (♯)"
             >♯</button>
           </div>
+
+          {/* YouTube karaoke alternatives — shown after search completes */}
+          {!direct && ytKaraokes.length > 0 && (
+            <div className={styles.ytAltBox}>
+              <p className={styles.ytAltHeader}>🎬 Karaokês prontos no YouTube</p>
+              {ytKaraokes.map(song => (
+                <button
+                  key={song.id}
+                  className={styles.ytAltItem}
+                  onClick={() => useYouTubeKaraoke(song)}
+                >
+                  <div className={styles.ytAltThumb}>
+                    <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="44px" />
+                  </div>
+                  <div className={styles.ytAltInfo}>
+                    <span className={styles.ytAltTitle}>{song.title}</span>
+                    <span className={styles.ytAltChannel}>{song.channel}</span>
+                  </div>
+                  <span className={styles.ytAltPlay}>▶</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── RIGHT: Lyrics ───────────────────────────────────────────── */}
