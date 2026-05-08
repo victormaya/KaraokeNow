@@ -102,6 +102,26 @@
   margin-top: -4px;
 }
 
+.cacheNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(65, 88, 208, 0.1);
+  border: 1px solid rgba(65, 88, 208, 0.25);
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  max-width: 420px;
+  line-height: 1.5;
+  margin-top: -4px;
+}
+
+.cacheNoticeIcon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
 /* ─── Error page ─────────────────────────────────────────────────────────── */
 
 .errorPage {

@@ -58,11 +58,12 @@ export default function SongPage() {
   const thumbnail = searchParams.get("thumbnail") ?? "";
 
   // ── Job state ────────────────────────────────────────────────────────────
-  const [jobStatus,  setJobStatus]  = useState<JobStatus>("pending");
-  const [progress,   setProgress]   = useState(0);
-  const [karaokeUrl, setKaraokeUrl] = useState<string | null>(null);
-  const [jobError,   setJobError]   = useState<string | null>(null);
-  const [ready,      setReady]      = useState(false);
+  const [jobStatus,    setJobStatus]    = useState<JobStatus>("pending");
+  const [progress,     setProgress]     = useState(0);
+  const [karaokeUrl,   setKaraokeUrl]   = useState<string | null>(null);
+  const [jobError,     setJobError]     = useState<string | null>(null);
+  const [ready,        setReady]        = useState(false);
+  const [isFirstTime,  setIsFirstTime]  = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Lyrics ───────────────────────────────────────────────────────────────
@@ -114,6 +115,7 @@ export default function SongPage() {
         setKaraokeUrl(`/api/audio/${data.job_id}`);
         setTimeout(() => setReady(true), 600);
       } else {
+        setIsFirstTime(true);
         startPolling(data.job_id);
       }
     } catch (e) {
@@ -261,6 +263,12 @@ export default function SongPage() {
             <span className={styles.progressPct}>{Math.round(progress)}%</span>
           </div>
           <p className={styles.statusText}>{STATUS_LABEL[jobStatus] ?? "Processando…"}</p>
+          {isFirstTime && (
+            <div className={styles.cacheNotice}>
+              <span className={styles.cacheNoticeIcon}>⚡</span>
+              <span>Isso acontece só na primeira vez. Após o processamento, a música fica salva para sempre — próximas reproduções serão instantâneas.</span>
+            </div>
+          )}
         </div>
       </div>
     );
