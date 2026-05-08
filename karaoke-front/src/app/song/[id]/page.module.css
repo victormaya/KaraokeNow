@@ -158,24 +158,6 @@
   overflow: hidden;
 }
 
-@media (max-width: 900px) {
-  .splitLayout {
-    grid-template-columns: 1fr;
-    overflow: visible;
-  }
-
-  .playerPanel {
-    display: none;
-  }
-
-  .lyricsPanel {
-    max-height: calc(100dvh - 58px);
-    padding-bottom: 88px;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-}
-
 /* ─── Player panel (left) ────────────────────────────────────────────────── */
 
 .playerPanel {
@@ -659,4 +641,24 @@
   color: var(--text-primary);
   font-size: 1.2rem;
   font-weight: 700;
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .splitLayout {
+    grid-template-columns: 1fr;
+    overflow: visible;
+  }
+
+  .playerPanel {
+    display: none;
+  }
+
+  .lyricsPanel {
+    max-height: calc(100dvh - 58px);
+    padding-bottom: 88px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
