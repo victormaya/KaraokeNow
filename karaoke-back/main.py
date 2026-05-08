@@ -348,15 +348,37 @@ async def get_lyrics(artist: str = "", title: str = ""):
     return JSONResponse({"lrc": None, "lyrics": None})
 
 
-_trending_cache: dict = {"data": None, "ts": 0.0}
+GENRE_IDS: dict[str, Optional[int]] = {
+    "top":       None,
+    "sertanejo": 1228,
+    "funk":      1229,
+    "pagode":    1226,
+    "forro":     1223,
+    "rap":       18,
+    "mpb":       1225,
+}
+
+# Per-genre cache: genre_key -> {"data": list, "ts": float}
+_trending_caches: dict[str, dict] = {}
+
 
 @app.get("/api/trending")
-async def get_trending():
-    """Top songs in Brazil from Apple Music/iTunes RSS — cached 6h."""
-    if _trending_cache["data"] and time.time() - _trending_cache["ts"] < 21600:
-        return JSONResponse({"results": _trending_cache["data"]})
-    try:
+async def get_trending(genre: str = "top"):
+    """Top songs in Brazil from Apple Music/iTunes RSS — cached 6h per genre."""
+    if genre not in GENRE_IDS:
+        raise HTTPException(status_code=400, detail=f"Unknown genre '{genre}'.")
+
+    cache = _trending_caches.setdefault(genre, {"data": None, "ts": 0.0})
+    if cache["data"] and time.time() - cache["ts"] < 21600:
+        return JSONResponse({"results": cache["data"]})
+
+    genre_id = GENRE_IDS[genre]
+    if genre_id is not None:
+        url = f"https://itunes.apple.com/br/rss/topsongs/limit=20/genre={genre_id}/json"
+    else:
         url = "https://itunes.apple.com/br/rss/topsongs/limit=50/json"
+
+    try:
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get(url)
             if resp.status_code == 200:
@@ -365,12 +387,12 @@ async def get_trending():
                     {
                         "name":   e["im:name"]["label"],
                         "artist": e["im:artist"]["label"],
-                        "art":    e["im:image"][-1]["label"].replace("170x170", "600x600"),
+                        "art":    e["im:image"][-1]["label"].replace("170x170bb", "600x600bb"),
                     }
                     for e in entries
                 ]
-                _trending_cache["data"] = results
-                _trending_cache["ts"]   = time.time()
+                cache["data"] = results
+                cache["ts"]   = time.time()
                 return JSONResponse({"results": results})
     except Exception:
         pass
