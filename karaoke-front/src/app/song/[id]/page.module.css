@@ -163,6 +163,18 @@
     grid-template-columns: 1fr;
     overflow: visible;
   }
+
+  /* Hide full player, show mini player instead */
+  .playerPanel {
+    display: none;
+  }
+
+  .lyricsPanel {
+    max-height: calc(100dvh - 60px);
+    padding-bottom: 88px;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
 }
 
 /* ─── Player panel (left) ────────────────────────────────────────────────── */
@@ -474,6 +486,155 @@
   font-size: 0.88rem;
   color: var(--text-muted);
   font-style: italic;
+}
+
+/* ─── Mini player (mobile only) ─────────────────────────────────────────── */
+
+.miniPlayer {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .miniPlayer {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 72px;
+    background: rgba(13, 13, 25, 0.96);
+    backdrop-filter: blur(20px) saturate(1.4);
+    -webkit-backdrop-filter: blur(20px) saturate(1.4);
+    border-top: 1px solid var(--border);
+    padding: 0 16px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    z-index: 100;
+    animation: slideUp 0.3s ease;
+  }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.miniLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.miniThumb {
+  position: relative;
+  width: 42px;
+  height: 42px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+}
+
+.miniTitle {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.miniControls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.miniPitch {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.miniPitchBtn {
+  width: 26px;
+  height: 26px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition), border-color var(--transition);
+}
+
+.miniPitchBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+.miniPitchVal {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 26px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.miniPlayBtn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--accent-grad);
+  border: none;
+  cursor: pointer;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity var(--transition), transform var(--transition);
+}
+
+.miniPlayBtn:hover { opacity: 0.85; transform: scale(1.05); }
+.miniPlayBtn:active { transform: scale(0.95); }
+.miniPlayBtn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.miniSpinner {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.25);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+.miniMode {
+  width: 34px;
+  height: 34px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.miniModeActive {
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.15);
 }
 
 /* ─── Synced lyrics ──────────────────────────────────────────────────────── */
