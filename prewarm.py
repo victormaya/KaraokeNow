@@ -39,21 +39,39 @@ def search_youtube(base_url: str, query: str) -> dict | None:
     return results[0] if results else None
 
 
-def process_and_wait(base_url: str, video_id: str) -> tuple[bool, str]:
+def process_and_wait(base_url: str, video_id: str, max_retries: int = 4) -> tuple[bool, str]:
     """Start processing and block until done or error. Returns (ok, reason)."""
-    r = requests.post(f"{base_url}/api/process/{video_id}", timeout=REQUEST_TIMEOUT)
-    r.raise_for_status()
-    data = r.json()
+    for attempt in range(max_retries):
+        try:
+            r = requests.post(f"{base_url}/api/process/{video_id}", timeout=REQUEST_TIMEOUT)
+            r.raise_for_status()
+            data = r.json()
+            break
+        except Exception as e:
+            if attempt == max_retries - 1:
+                return False, str(e)
+            time.sleep(5 * (attempt + 1))
+    else:
+        return False, "falha ao iniciar"
 
     if data["status"] == "done":
         return True, "cached"
 
     job_id = data["job_id"]
+    consecutive_errors = 0
     while True:
         time.sleep(POLL_INTERVAL)
-        r = requests.get(f"{base_url}/api/job/{job_id}", timeout=REQUEST_TIMEOUT)
-        r.raise_for_status()
-        job = r.json()
+        try:
+            r = requests.get(f"{base_url}/api/job/{job_id}", timeout=REQUEST_TIMEOUT)
+            r.raise_for_status()
+            job = r.json()
+            consecutive_errors = 0
+        except Exception:
+            consecutive_errors += 1
+            if consecutive_errors >= 4:
+                return False, "backend inacessível durante processamento"
+            continue
+
         status = job["status"]
         if status == "done":
             return True, "processed"
