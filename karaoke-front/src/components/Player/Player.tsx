@@ -47,6 +47,7 @@ export default function Player({
   const [duration, setDuration]   = useState(0);
   const [volume, setVolume]       = useState(1);
   const [karaokeMode, setKaraokeMode] = useState(false);
+  const [pitch, setPitch]         = useState(0);
 
   // ── Switch source whenever song or karaoke URL changes ────────────
   useEffect(() => {
@@ -57,6 +58,7 @@ export default function Player({
     setCurrent(0);
     setDuration(0);
     setPlaying(false);
+    setPitch(0);
 
     el.src = karaokeUrl ?? `/api/stream/${song.id}`;
     setKaraokeMode(!!karaokeUrl);
@@ -72,6 +74,11 @@ export default function Player({
   useEffect(() => {
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
+
+  // Sync pitch (playbackRate = 2^(semitones/12))
+  useEffect(() => {
+    if (audioRef.current) audioRef.current.playbackRate = Math.pow(2, pitch / 12);
+  }, [pitch]);
 
   const togglePlay = useCallback(() => {
     const el = audioRef.current;
@@ -206,6 +213,26 @@ export default function Player({
 
         {/* ── Right: karaoke button + volume ──────────────── */}
         <div className={styles.actions}>
+          {/* Pitch control */}
+          <div className={styles.pitchRow}>
+            <button
+              className={styles.pitchBtn}
+              onClick={() => setPitch(p => Math.max(-6, p - 1))}
+              aria-label="Diminuir um semitom"
+              title="Diminuir tom (♭)"
+            >♭</button>
+            <span className={styles.pitchDisplay}>
+              {pitch === 0 ? "0" : pitch > 0 ? `+${pitch}` : pitch}
+              <span className={styles.pitchUnit}>st</span>
+            </span>
+            <button
+              className={styles.pitchBtn}
+              onClick={() => setPitch(p => Math.min(6, p + 1))}
+              aria-label="Aumentar um semitom"
+              title="Aumentar tom (♯)"
+            >♯</button>
+          </div>
+
           {/* Volume */}
           <div className={styles.volumeRow}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
