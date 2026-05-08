@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import type { Song } from "@/types";
 import SearchBar from "@/components/SearchBar/SearchBar";
 import SongGrid from "@/components/SongGrid/SongGrid";
+import Footer from "@/components/Footer/Footer";
 import styles from "./page.module.css";
 
 interface TrendingTrack { name: string; artist: string; art: string; }
@@ -161,6 +162,7 @@ function HomeContent() {
           <SongGrid songs={songs} loading={searching} />
         )}
       </main>
+      <Footer />
     </div>
   );
 }
