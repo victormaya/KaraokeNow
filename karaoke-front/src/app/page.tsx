@@ -36,6 +36,10 @@ function HomeContent() {
   const [searching,   setSearching]   = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
 
+  // Karaoke search state (parallel)
+  const [ytKaraokes,        setYtKaraokes]        = useState<Song[]>([]);
+  const [ytKaraokeLoading,  setYtKaraokeLoading]  = useState(false);
+
   // Tabs state
   const [activeTab,    setActiveTab]    = useState<TabId>("top");
   const [tabTracks,    setTabTracks]    = useState<TrendingTrack[]>([]);
@@ -62,12 +66,22 @@ function HomeContent() {
       .finally(() => setTabLoading(false));
   }, [activeTab]);
 
-  // React to URL query changes
+  // React to URL query changes — run both searches in parallel
   useEffect(() => {
-    if (!query) { setSongs([]); setSearchError(null); return; }
+    if (!query) {
+      setSongs([]);
+      setYtKaraokes([]);
+      setSearchError(null);
+      return;
+    }
+
     setSearching(true);
+    setYtKaraokeLoading(true);
     setSearchError(null);
     setSongs([]);
+    setYtKaraokes([]);
+
+    // Regular search
     fetch(`/api/search?q=${encodeURIComponent(query)}&limit=12`)
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
       .then(d => {
@@ -77,12 +91,30 @@ function HomeContent() {
       })
       .catch(e => setSearchError(`Erro ao buscar: ${e instanceof Error ? e.message : e}`))
       .finally(() => setSearching(false));
+
+    // Karaoke search (parallel, silent on error)
+    fetch(`/api/karaoke-search?q=${encodeURIComponent(query)}`)
+      .then(r => r.ok ? r.json() : { results: [] })
+      .then(d => setYtKaraokes(d.results ?? []))
+      .catch(() => {})
+      .finally(() => setYtKaraokeLoading(false));
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   const handleSearch = useCallback((q: string) => {
     router.push(`/?q=${encodeURIComponent(q.trim())}`);
   }, [router]);
+
+  function goDirectKaraoke(song: Song) {
+    const params = new URLSearchParams({
+      title:     song.title,
+      channel:   song.channel,
+      thumbnail: song.thumbnail,
+      direct:    "1",
+    });
+    router.push(`/song/${song.id}?${params}`);
+  }
 
   const showTabs = !query && !searching;
 
@@ -159,7 +191,59 @@ function HomeContent() {
             )}
           </section>
         ) : (
-          <SongGrid songs={songs} loading={searching} />
+          <>
+            {/* ── Karaoke section ──────────────────────────────────── */}
+            {(ytKaraokeLoading || ytKaraokes.length > 0) && (
+              <section className={styles.ytSection}>
+                <div className={styles.ytSectionHeader}>
+                  <span className={styles.ytSectionIcon}>🎬</span>
+                  <span className={styles.ytSectionTitle}>Karaokês prontos no YouTube</span>
+                  <span className={styles.ytSectionBadge}>Instantâneo</span>
+                </div>
+
+                {ytKaraokeLoading ? (
+                  <div className={styles.ytSkeletons}>
+                    {[0, 1, 2].map(i => <div key={i} className={styles.ytSkeleton} />)}
+                  </div>
+                ) : (
+                  <div className={styles.ytList}>
+                    {ytKaraokes.map(song => (
+                      <button
+                        key={song.id}
+                        className={styles.ytCard}
+                        onClick={() => goDirectKaraoke(song)}
+                      >
+                        <div className={styles.ytThumb}>
+                          <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="120px" />
+                          <div className={styles.ytPlayOverlay} aria-hidden>
+                            <svg width="32" height="32" viewBox="0 0 24 24">
+                              <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.6)" />
+                              <polygon points="10,8 18,12 10,16" fill="white" />
+                            </svg>
+                          </div>
+                        </div>
+                        <div className={styles.ytInfo}>
+                          <p className={styles.ytTitle}>{song.title}</p>
+                          <p className={styles.ytChannel}>{song.channel}</p>
+                          <span className={styles.ytInstant}>▶ Ouvir agora</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ── Regular results ───────────────────────────────────── */}
+            {(searching || songs.length > 0) && (
+              <div className={styles.aiSectionHeader}>
+                <span>🤖</span>
+                <span>Processar com IA</span>
+                <span className={styles.aiSectionSub}>remove os vocais em minutos</span>
+              </div>
+            )}
+            <SongGrid songs={songs} loading={searching} />
+          </>
         )}
       </main>
       <Footer />
