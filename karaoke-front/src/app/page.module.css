@@ -175,27 +175,27 @@
 
 .trendingGrid {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
-  gap: 4px 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 12px;
 }
 
-@media (max-width: 900px) {
+@media (max-width: 860px) {
   .trendingGrid {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 560px) {
+@media (max-width: 500px) {
   .trendingGrid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
 .trendingCard {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 7px 8px;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -203,6 +203,8 @@
   text-align: left;
   transition: background var(--transition);
   width: 100%;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .trendingCard:hover {
@@ -218,7 +220,8 @@
   font-weight: 700;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  min-width: 18px;
+  width: 20px;
+  min-width: 20px;
   text-align: right;
   flex-shrink: 0;
 }
@@ -229,8 +232,9 @@
 
 .trendingArt {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
@@ -242,24 +246,28 @@
   flex-direction: column;
   gap: 2px;
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .trendingName {
-  font-size: 0.88rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
   transition: color var(--transition);
 }
 
 .trendingArtist {
-  font-size: 0.76rem;
+  font-size: 0.74rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .trendingCardSkeleton {

@@ -22,6 +22,8 @@ const GENRE_TABS = [
 
 type TabId = typeof GENRE_TABS[number]["id"];
 
+const trunc = (s: string, n: number) => s.length > n ? s.slice(0, n) + "…" : s;
+
 // ── Inner component ──────────────────────────────────────────────────────────
 function HomeContent() {
   const router       = useRouter();
@@ -147,8 +149,8 @@ function HomeContent() {
                       <Image src={track.art} alt={track.name} fill unoptimized sizes="44px" />
                     </div>
                     <div className={styles.trendingInfo}>
-                      <span className={styles.trendingName}>{track.name}</span>
-                      <span className={styles.trendingArtist}>{track.artist}</span>
+                      <span className={styles.trendingName}>{trunc(track.name, 30)}</span>
+                      <span className={styles.trendingArtist}>{trunc(track.artist, 24)}</span>
                     </div>
                   </button>
                 ))}
