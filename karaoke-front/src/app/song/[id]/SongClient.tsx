@@ -48,12 +48,6 @@ const STATUS_LABEL: Record<string, string> = {
   done:        "Concluído!",
 };
 
-const STATUS_LABEL_DIRECT: Record<string, string> = {
-  pending:     "Iniciando download…",
-  downloading: "Baixando karaokê do YouTube…",
-  done:        "Pronto!",
-};
-
 export default function SongClient() {
   const params       = useParams();
   const searchParams = useSearchParams();
@@ -70,7 +64,7 @@ export default function SongClient() {
   const [progress,    setProgress]    = useState(0);
   const [karaokeUrl,  setKaraokeUrl]  = useState<string | null>(null);
   const [jobError,    setJobError]    = useState<string | null>(null);
-  const [ready,       setReady]       = useState(false);
+  const [ready,       setReady]       = useState(direct);
   const [isFirstTime, setIsFirstTime] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -110,14 +104,13 @@ export default function SongClient() {
     const targets: Record<string, number> = {
       pending: 8, downloading: 45, separating: 88, done: 100,
     };
-    if (direct) { targets.downloading = 80; }
     const target = targets[jobStatus] ?? 0;
     if (jobStatus === "done") { setProgress(100); return; }
     const id = setInterval(() => {
       setProgress(prev => prev < target ? Math.min(prev + 0.5, target) : prev);
     }, 400);
     return () => clearInterval(id);
-  }, [jobStatus, direct]);
+  }, [jobStatus]);
 
   // ── Start job & lyrics on mount ──────────────────────────────────────────
   useEffect(() => {
@@ -139,9 +132,9 @@ export default function SongClient() {
       if (data.status === "done") {
         setJobStatus("done");
         setKaraokeUrl(`/api/audio/${data.job_id}`);
-        setTimeout(() => setReady(true), 600);
+        if (!direct) setTimeout(() => setReady(true), 600);
       } else {
-        setIsFirstTime(true);
+        if (!direct) setIsFirstTime(true);
         startPolling(data.job_id);
       }
     } catch (e) {
@@ -334,8 +327,6 @@ export default function SongClient() {
     );
   }
 
-  const statusLabels = direct ? STATUS_LABEL_DIRECT : STATUS_LABEL;
-
   // ── Loading screen ────────────────────────────────────────────────────────
   if (!ready) {
     return (
@@ -361,7 +352,7 @@ export default function SongClient() {
             </div>
             <span className={styles.progressPct}>{Math.round(progress)}%</span>
           </div>
-          <p className={styles.statusText}>{statusLabels[jobStatus] ?? "Processando…"}</p>
+          <p className={styles.statusText}>{STATUS_LABEL[jobStatus] ?? "Processando…"}</p>
 
           {/* AI processing notices (only when not direct) */}
           {!direct && isFirstTime && (
