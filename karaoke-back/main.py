@@ -451,10 +451,22 @@ async def get_lyrics(artist: str = "", title: str = ""):
                 results = sresp.json()
                 if results:
                     best = results[0]
-                    return JSONResponse({
-                        "lrc":    best.get("syncedLyrics") or None,
-                        "lyrics": best.get("plainLyrics")  or None,
-                    })
+                    lrc    = best.get("syncedLyrics") or None
+                    lyrics = best.get("plainLyrics")  or None
+                    if lrc or lyrics:
+                        return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+
+            # 3. lyrics.ovh — larger database, plain text only
+            if artist.strip() and title.strip():
+                ovh_url = f"https://api.lyrics.ovh/v1/{quote(artist.strip())}/{quote(title.strip())}"
+                try:
+                    ovh = await client.get(ovh_url, timeout=8)
+                    if ovh.status_code == 200:
+                        plain = ovh.json().get("lyrics") or None
+                        if plain:
+                            return JSONResponse({"lrc": None, "lyrics": plain})
+                except Exception:
+                    pass
     except Exception:
         pass
     return JSONResponse({"lrc": None, "lyrics": None})
