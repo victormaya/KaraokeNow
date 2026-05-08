@@ -123,37 +123,54 @@
 
 /* ─── Trending section ───────────────────────────────────────────── */
 .trendingSection {
-  padding-top: 8px;
+  padding-top: 4px;
 }
 
-.trendingHeader {
+/* ─── Tab bar ────────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.tabBar::-webkit-scrollbar { display: none; }
+
+.tab {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.trendingFlag {
-  font-size: 1.4rem;
-}
-
-.trendingTitle {
-  font-size: 1.2rem;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.01em;
-}
-
-.trendingBadge {
-  font-size: 0.7rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  gap: 6px;
+  padding: 7px 16px;
   border-radius: 99px;
-  padding: 2px 10px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition),
+    border-color var(--transition);
+  flex-shrink: 0;
+}
+
+.tab:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+}
+
+.tabActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(200, 80, 192, 0.35);
+}
+
+.tabActive:hover {
+  background: var(--accent);
+  color: #fff;
 }
 
 .trendingGrid {
