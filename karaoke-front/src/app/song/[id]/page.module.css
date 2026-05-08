@@ -750,13 +750,23 @@
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 10px 14px;
+  cursor: pointer;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.modalUrlRow:hover {
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.06);
 }
 
 .modalUrl {
   font-size: 0.8rem;
   color: var(--text-secondary);
-  word-break: break-all;
   font-family: monospace;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .copyBtn {

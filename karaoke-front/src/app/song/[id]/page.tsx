@@ -264,18 +264,8 @@ export default function SongPage() {
     };
   }, []);
 
-  function isMobile() {
-    return /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(navigator.userAgent);
-  }
-
-  async function handleShare() {
-    if (isMobile() && navigator.share) {
-      try {
-        await navigator.share({ title, url: window.location.href });
-      } catch { /* cancelled */ }
-    } else {
-      setShareModalOpen(true);
-    }
+  function handleShare() {
+    setShareModalOpen(true);
   }
 
   async function copyLink() {
@@ -546,7 +536,7 @@ export default function SongPage() {
                 </svg>
               </button>
             </div>
-            <div className={styles.modalUrlRow}>
+            <div className={styles.modalUrlRow} onClick={copyLink} title="Clique para copiar">
               <span className={styles.modalUrl}>{typeof window !== "undefined" ? window.location.href : ""}</span>
             </div>
             <button className={`${styles.copyBtn} ${copied ? styles.copyBtnDone : ""}`} onClick={copyLink}>
