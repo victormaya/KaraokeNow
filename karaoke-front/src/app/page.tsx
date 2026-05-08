@@ -1,43 +1,55 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import Image from "next/image";
 import type { Song } from "@/types";
 import SearchBar from "@/components/SearchBar/SearchBar";
 import SongGrid from "@/components/SongGrid/SongGrid";
 import styles from "./page.module.css";
 
-const SUGGESTIONS = [
-  "Bohemian Rhapsody – Queen",
-  "Blinding Lights – The Weeknd",
-  "Shape of You – Ed Sheeran",
-  "Hotel California – Eagles",
-  "As It Was – Harry Styles",
-];
+interface TrendingTrack {
+  name: string;
+  artist: string;
+  art: string;
+}
 
 export default function Home() {
-  const [songs, setSongs] = useState<Song[]>([]);
-  const [searching, setSearching] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const [songs,         setSongs]         = useState<Song[]>([]);
+  const [searching,     setSearching]     = useState(false);
+  const [searchError,   setSearchError]   = useState<string | null>(null);
+  const [hasSearched,   setHasSearched]   = useState(false);
+  const [trending,      setTrending]      = useState<TrendingTrack[]>([]);
+  const [trendingLoad,  setTrendingLoad]  = useState(true);
+
+  useEffect(() => {
+    fetch("/api/trending")
+      .then(r => r.json())
+      .then(d => setTrending(d.results ?? []))
+      .catch(() => {})
+      .finally(() => setTrendingLoad(false));
+  }, []);
 
   const handleSearch = useCallback(async (query: string) => {
     setSearching(true);
     setSearchError(null);
     setSongs([]);
+    setHasSearched(true);
     try {
       const res = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=12`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       setSongs(data.results ?? []);
-      if ((data.results ?? []).length === 0) {
+      if ((data.results ?? []).length === 0)
         setSearchError("Nenhuma música encontrada. Tente outra busca.");
-      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
-      setSearchError(`Erro ao buscar: ${msg}. Verifique se o backend está rodando.`);
+      setSearchError(`Erro ao buscar: ${msg}`);
     } finally {
       setSearching(false);
     }
   }, []);
+
+  const showTrending = !hasSearched && !searching;
 
   return (
     <div className={styles.page}>
@@ -67,23 +79,47 @@ export default function Home() {
           </div>
         )}
 
-        {!searching && songs.length === 0 && !searchError ? (
-          <div className={styles.welcome} aria-label="Bem-vindo">
-            <div className={styles.welcomeIcon} aria-hidden>🎵</div>
-            <p className={styles.welcomeTitle}>O que você quer cantar hoje?</p>
-            <div className={styles.welcomeHints} role="list" aria-label="Sugestões">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  className={styles.hint}
-                  role="listitem"
-                  onClick={() => handleSearch(s)}
-                >
-                  {s}
-                </button>
-              ))}
+        {showTrending ? (
+          <section className={styles.trendingSection}>
+            <div className={styles.trendingHeader}>
+              <span className={styles.trendingFlag}>🇧🇷</span>
+              <h2 className={styles.trendingTitle}>Top Brasil</h2>
+              <span className={styles.trendingBadge}>Apple Music</span>
             </div>
-          </div>
+
+            {trendingLoad ? (
+              <div className={styles.trendingGrid}>
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <div key={i} className={styles.trendingCardSkeleton} />
+                ))}
+              </div>
+            ) : (
+              <div className={styles.trendingGrid}>
+                {trending.map((track, i) => (
+                  <button
+                    key={i}
+                    className={styles.trendingCard}
+                    onClick={() => handleSearch(`${track.name} ${track.artist}`)}
+                  >
+                    <div className={styles.trendingRank}>{i + 1}</div>
+                    <div className={styles.trendingArt}>
+                      <Image
+                        src={track.art}
+                        alt={track.name}
+                        fill
+                        unoptimized
+                        sizes="64px"
+                      />
+                    </div>
+                    <div className={styles.trendingInfo}>
+                      <span className={styles.trendingName}>{track.name}</span>
+                      <span className={styles.trendingArtist}>{track.artist}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
         ) : (
           <SongGrid songs={songs} loading={searching} />
         )}

@@ -348,6 +348,35 @@ async def get_lyrics(artist: str = "", title: str = ""):
     return JSONResponse({"lrc": None, "lyrics": None})
 
 
+_trending_cache: dict = {"data": None, "ts": 0.0}
+
+@app.get("/api/trending")
+async def get_trending():
+    """Top songs in Brazil from Apple Music/iTunes RSS — cached 6h."""
+    if _trending_cache["data"] and time.time() - _trending_cache["ts"] < 21600:
+        return JSONResponse({"results": _trending_cache["data"]})
+    try:
+        url = "https://itunes.apple.com/br/rss/topsongs/limit=50/json"
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(url)
+            if resp.status_code == 200:
+                entries = resp.json().get("feed", {}).get("entry", [])
+                results = [
+                    {
+                        "name":   e["im:name"]["label"],
+                        "artist": e["im:artist"]["label"],
+                        "art":    e["im:image"][-1]["label"].replace("170x170", "600x600"),
+                    }
+                    for e in entries
+                ]
+                _trending_cache["data"] = results
+                _trending_cache["ts"]   = time.time()
+                return JSONResponse({"results": results})
+    except Exception:
+        pass
+    return JSONResponse({"results": []})
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         hostname: "i.ytimg.com",
         pathname: "/vi/**",
       },
+      {
+        protocol: "https",
+        hostname: "*.mzstatic.com",
+      },
     ],
   },
   async rewrites() {
