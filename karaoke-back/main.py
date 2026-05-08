@@ -421,24 +421,40 @@ async def cleanup_job(job_id: str):
 
 @app.get("/api/lyrics")
 async def get_lyrics(artist: str = "", title: str = ""):
-    """Proxy to lrclib.net — returns synced LRC and plain lyrics."""
+    """Proxy to lrclib.net — returns synced LRC and plain lyrics.
+    Falls back to fuzzy search if exact match yields nothing."""
     from urllib.parse import quote
     if not artist and not title:
         return JSONResponse({"lrc": None, "lyrics": None})
+    headers = {"Lrclib-Client": "KaraokeNow/1.0"}
     try:
-        url = (
-            f"https://lrclib.net/api/get"
-            f"?artist_name={quote(artist.strip())}"
-            f"&track_name={quote(title.strip())}"
-        )
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(url, headers={"Lrclib-Client": "KaraokeNow/1.0"})
+            # 1. Exact match
+            url = (
+                f"https://lrclib.net/api/get"
+                f"?artist_name={quote(artist.strip())}"
+                f"&track_name={quote(title.strip())}"
+            )
+            resp = await client.get(url, headers=headers)
             if resp.status_code == 200:
                 data = resp.json()
-                return JSONResponse({
-                    "lrc":    data.get("syncedLyrics") or None,
-                    "lyrics": data.get("plainLyrics")  or None,
-                })
+                lrc     = data.get("syncedLyrics") or None
+                lyrics  = data.get("plainLyrics")  or None
+                if lrc or lyrics:
+                    return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+
+            # 2. Fuzzy search fallback
+            q = f"{artist.strip()} {title.strip()}".strip()
+            search_url = f"https://lrclib.net/api/search?q={quote(q)}"
+            sresp = await client.get(search_url, headers=headers)
+            if sresp.status_code == 200:
+                results = sresp.json()
+                if results:
+                    best = results[0]
+                    return JSONResponse({
+                        "lrc":    best.get("syncedLyrics") or None,
+                        "lyrics": best.get("plainLyrics")  or None,
+                    })
     except Exception:
         pass
     return JSONResponse({"lrc": None, "lyrics": None})
