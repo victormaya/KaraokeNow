@@ -240,18 +240,18 @@ export default function Player({
             <span className={styles.pitchLabel}>Tom</span>
             <button
               className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.max(-6, pitch - 1))}
-              aria-label="Diminuir um semitom"
+              onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}
+              aria-label="Diminuir meio semitom"
               title="Diminuir tom (♭)"
             >♭</button>
             <span className={styles.pitchDisplay}>
-              {pitch === 0 ? "0" : pitch > 0 ? `+${pitch}` : pitch}
+              {pitch === 0 ? "0" : `${pitch > 0 ? "+" : ""}${Number.isInteger(pitch) ? pitch : pitch.toFixed(1)}`}
               <span className={styles.pitchUnit}>st</span>
             </span>
             <button
               className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.min(6, pitch + 1))}
-              aria-label="Aumentar um semitom"
+              onClick={() => applyPitch(Math.min(12, pitch + 0.5))}
+              aria-label="Aumentar meio semitom"
               title="Aumentar tom (♯)"
             >♯</button>
           </div>
