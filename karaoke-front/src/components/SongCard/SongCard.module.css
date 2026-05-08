@@ -74,50 +74,6 @@
   transform: scale(1);
 }
 
-/* ── Preview badge ─────────────────────────── */
-.previewBadge {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  font-size: 0.65rem;
-  font-weight: 600;
-  padding: 3px 8px 3px 5px;
-  border-radius: 99px;
-  letter-spacing: 0.04em;
-  opacity: 0;
-  transform: translateY(-4px);
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  pointer-events: none;
-}
-
-.card:hover .previewBadge {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* Sound-wave bars inside the badge */
-.previewBadge span {
-  display: block;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--accent);
-  animation: soundWave 0.8s ease-in-out infinite alternate;
-}
-
-.previewBadge span:nth-child(1) { height: 6px; animation-delay: 0s; }
-.previewBadge span:nth-child(2) { height: 10px; animation-delay: 0.15s; }
-.previewBadge span:nth-child(3) { height: 6px; animation-delay: 0.3s; }
-
-@keyframes soundWave {
-  from { transform: scaleY(0.4); }
-  to   { transform: scaleY(1); }
-}
-
 /* ── Info ──────────────────────────────────── */
 .info {
   padding: 12px 14px 14px;
