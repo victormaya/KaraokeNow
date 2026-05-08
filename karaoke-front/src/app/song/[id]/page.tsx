@@ -82,6 +82,7 @@ export default function SongPage() {
   const [current,      setCurrent]      = useState(0);
   const [duration,     setDuration]     = useState(0);
   const [audioLoading, setAudioLoading] = useState(true);
+  const [pitch,        setPitch]        = useState(0);
 
   // ── Progress animation ───────────────────────────────────────────────────
   useEffect(() => {
@@ -216,6 +217,13 @@ export default function SongPage() {
   function handleTimeUpdate() {
     if (karaokeRef.current) setCurrent(karaokeRef.current.currentTime);
   }
+
+  // Sync pitch to both audio elements
+  useEffect(() => {
+    const rate = Math.pow(2, pitch / 12);
+    if (karaokeRef.current)  karaokeRef.current.playbackRate  = rate;
+    if (originalRef.current) originalRef.current.playbackRate = rate;
+  }, [pitch]);
 
   // ── Mode switch — both keep playing, just swap which has volume ───────────
   function switchMode(toKaraoke: boolean) {
@@ -355,6 +363,27 @@ export default function SongPage() {
           <p className={styles.switchHint}>
             {karaokeMode ? "Sem vocais — cante você!" : "Versão original com vocais"}
           </p>
+
+          {/* Pitch control */}
+          <div className={styles.pitchRow}>
+            <span className={styles.pitchLabel}>Tom</span>
+            <button
+              className={styles.pitchBtn}
+              onClick={() => setPitch(p => Math.max(-6, p - 1))}
+              aria-label="Diminuir um semitom"
+              title="Diminuir tom (♭)"
+            >♭</button>
+            <span className={styles.pitchDisplay}>
+              {pitch === 0 ? "0" : pitch > 0 ? `+${pitch}` : pitch}
+              <span className={styles.pitchUnit}>st</span>
+            </span>
+            <button
+              className={styles.pitchBtn}
+              onClick={() => setPitch(p => Math.min(6, p + 1))}
+              aria-label="Aumentar um semitom"
+              title="Aumentar tom (♯)"
+            >♯</button>
+          </div>
         </div>
 
         {/* ── RIGHT: Lyrics ───────────────────────────────────────────── */}

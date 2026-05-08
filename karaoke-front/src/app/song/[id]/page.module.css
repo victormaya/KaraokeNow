@@ -352,6 +352,66 @@
   margin-top: -10px;
 }
 
+/* Pitch control */
+.pitchRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: -8px;
+}
+
+.pitchLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 4px;
+}
+
+.pitchBtn {
+  width: 36px;
+  height: 36px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.pitchBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.1);
+}
+
+.pitchBtn:active {
+  transform: scale(0.92);
+}
+
+.pitchDisplay {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  min-width: 44px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.pitchUnit {
+  font-size: 0.7rem;
+  font-weight: 400;
+  opacity: 0.6;
+  margin-left: 1px;
+}
+
 /* Spinner */
 .spinner {
   display: inline-block;
