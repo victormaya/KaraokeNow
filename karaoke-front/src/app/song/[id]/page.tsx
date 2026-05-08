@@ -332,10 +332,16 @@ export default function SongPage() {
           </div>
           <p className={styles.statusText}>{STATUS_LABEL[jobStatus] ?? "Processando…"}</p>
           {isFirstTime && (
-            <div className={styles.cacheNotice}>
-              <span className={styles.cacheNoticeIcon}>⚡</span>
-              <span>Isso acontece só na primeira vez. Após o processamento, a música fica salva para sempre — próximas reproduções serão instantâneas.</span>
-            </div>
+            <>
+              <div className={styles.cacheNotice}>
+                <span className={styles.cacheNoticeIcon}>⚡</span>
+                <span>Isso acontece só na primeira vez. Após o processamento, a música fica salva para sempre — próximas reproduções serão instantâneas.</span>
+              </div>
+              <div className={styles.navWarning}>
+                <span className={styles.navWarningIcon}>⚠️</span>
+                <span>Não atualize a página nem volte agora. Se sair e escolher a mesma música novamente, o carregamento será reiniciado do zero.</span>
+              </div>
+            </>
           )}
         </div>
       </div>
