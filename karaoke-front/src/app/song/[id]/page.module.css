@@ -1,23 +1,54 @@
-/* ─── Shared ─────────────────────────────────────────────────────────────── */
+/* ─── Top bar ────────────────────────────────────────────────────────────── */
+
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  height: 48px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
 
 .backBtn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: var(--surface);
-  border: 1px solid var(--border);
+  gap: 4px;
+  padding: 6px 10px;
+  background: none;
+  border: none;
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: color var(--transition), border-color var(--transition);
-  margin: 20px 24px;
+  transition: color var(--transition), background var(--transition);
 }
 
 .backBtn:hover {
   color: var(--text-primary);
-  border-color: var(--border-hover);
+  background: var(--surface-2);
+}
+
+.shareBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color var(--transition), border-color var(--transition), background var(--transition);
+}
+
+.shareBtn:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: rgba(200, 80, 192, 0.08);
 }
 
 /* ─── Loading page ───────────────────────────────────────────────────────── */
@@ -144,14 +175,16 @@
 /* ─── Song page ──────────────────────────────────────────────────────────── */
 
 .songPage {
-  min-height: 100dvh;
+  height: 100dvh;
   background: var(--bg);
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .splitLayout {
   flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: 420px 1fr;
   gap: 0;
@@ -428,7 +461,6 @@
   flex-direction: column;
   padding: 32px 40px 40px;
   overflow-y: auto;
-  max-height: calc(100dvh - 80px);
 }
 
 .lyricsHeading {
@@ -656,7 +688,7 @@
   }
 
   .lyricsPanel {
-    max-height: calc(100dvh - 58px);
+    max-height: calc(100dvh - 48px);
     padding-bottom: 88px;
     padding-left: 20px;
     padding-right: 20px;
