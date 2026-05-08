@@ -1,19 +1,110 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "KaraokeNow — Karaokê Instantâneo do YouTube",
-  description:
-    "Busque qualquer música do YouTube e remova os vocais em segundos para um karaokê perfeito.",
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://karaokenow.com.br";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#0d0d19",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const metadata: Metadata = {
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "KaraokeNow — Karaokê Instantâneo do YouTube",
+    template: "%s | KaraokeNow",
+  },
+  description:
+    "Busque qualquer música do YouTube, remova os vocais com IA em segundos e cante como nunca. Grátis, sem download, sem cadastro.",
+  keywords: [
+    "karaoke online",
+    "karaokê grátis",
+    "remover vocal música",
+    "karaoke youtube",
+    "karaokê sem vocal",
+    "karaoke brasil",
+    "cantar online",
+    "instrumental youtube",
+    "karaoke sertanejo",
+    "karaoke funk",
+    "karaoke pagode",
+    "remover voz da música",
+    "karaoke forró",
+    "karaoke MPB",
+    "karaoke rap",
+  ],
+  authors:   [{ name: "KaraokeNow" }],
+  creator:   "KaraokeNow",
+  publisher: "KaraokeNow",
+  robots: {
+    index:  true,
+    follow: true,
+    googleBot: {
+      index:  true,
+      follow: true,
+      "max-image-preview": "large",
+      "max-snippet":       -1,
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type:        "website",
+    locale:      "pt_BR",
+    url:         BASE_URL,
+    siteName:    "KaraokeNow",
+    title:       "KaraokeNow — Karaokê Instantâneo do YouTube",
+    description: "Busque qualquer música, remova os vocais com IA e cante. Grátis, sem download, sem cadastro.",
+    images: [
+      {
+        url:    "/opengraph-image",
+        width:  1200,
+        height: 630,
+        alt:    "KaraokeNow — Karaokê Instantâneo do YouTube",
+        type:   "image/png",
+      },
+    ],
+  },
+  twitter: {
+    card:        "summary_large_image",
+    title:       "KaraokeNow — Karaokê Instantâneo do YouTube",
+    description: "Karaokê instantâneo do YouTube com remoção de vocais por IA. Grátis!",
+    images:      ["/opengraph-image"],
+    creator:     "@karaokenow",
+    site:        "@karaokenow",
+  },
+  alternates: {
+    canonical: BASE_URL,
+  },
+  manifest: "/manifest.json",
+  category: "entertainment",
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type":    "WebSite",
+  name:        "KaraokeNow",
+  url:         BASE_URL,
+  description: "Karaokê instantâneo do YouTube com remoção de vocais por IA",
+  potentialAction: {
+    "@type": "SearchAction",
+    target: {
+      "@type":       "EntryPoint",
+      urlTemplate:   `${BASE_URL}/?q={search_term_string}`,
+    },
+    "query-input": "required name=search_term_string",
+  },
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
+      <head>
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );
