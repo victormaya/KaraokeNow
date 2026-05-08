@@ -455,48 +455,6 @@ export default function SongPage() {
         </div>
       </div>
 
-      {/* ── Mini player — mobile only, fixed at bottom ─────────────── */}
-      <div className={styles.miniPlayer}>
-        <div className={styles.miniLeft}>
-          <div className={styles.miniThumb}>
-            <Image src={thumbnail} alt={title} fill unoptimized />
-          </div>
-          <p className={styles.miniTitle}>{title}</p>
-        </div>
-
-        <div className={styles.miniControls}>
-          <div className={styles.miniPitch}>
-            <button className={styles.miniPitchBtn} onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}>♭</button>
-            <span className={styles.miniPitchVal}>
-              {pitch === 0 ? "0" : `${pitch > 0 ? "+" : ""}${Number.isInteger(pitch) ? pitch : pitch.toFixed(1)}`}
-            </span>
-            <button className={styles.miniPitchBtn} onClick={() => applyPitch(Math.min(12, pitch + 0.5))}>♯</button>
-          </div>
-
-          <button className={styles.miniPlayBtn} onClick={togglePlay} disabled={audioLoading} aria-label={playing ? "Pausar" : "Reproduzir"}>
-            {audioLoading ? (
-              <span className={styles.miniSpinner} aria-hidden />
-            ) : playing ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5,3 19,12 5,21" />
-              </svg>
-            )}
-          </button>
-
-          <button
-            className={`${styles.miniMode} ${karaokeMode ? styles.miniModeActive : ""}`}
-            onClick={() => switchMode(!karaokeMode)}
-            title={karaokeMode ? "Karaokê ativo" : "Original ativo"}
-          >
-            {karaokeMode ? "🎤" : "🎵"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
