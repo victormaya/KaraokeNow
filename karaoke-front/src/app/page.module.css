@@ -157,16 +157,22 @@
 }
 
 .trendingGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 24px;
+}
+
+@media (max-width: 640px) {
+  .trendingGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .trendingCard {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 8px 10px;
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
@@ -180,19 +186,28 @@
   background: var(--surface);
 }
 
+.trendingCard:hover .trendingName {
+  color: var(--accent);
+}
+
 .trendingRank {
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-  min-width: 22px;
+  min-width: 18px;
   text-align: right;
+  flex-shrink: 0;
+}
+
+.trendingRank[data-top="true"] {
+  color: var(--accent);
 }
 
 .trendingArt {
   position: relative;
-  width: 48px;
-  height: 48px;
+  width: 44px;
+  height: 44px;
   border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
@@ -207,16 +222,17 @@
 }
 
 .trendingName {
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: color var(--transition);
 }
 
 .trendingArtist {
-  font-size: 0.8rem;
+  font-size: 0.76rem;
   color: var(--text-muted);
   white-space: nowrap;
   overflow: hidden;
@@ -224,15 +240,15 @@
 }
 
 .trendingCardSkeleton {
-  height: 68px;
+  height: 60px;
   border-radius: var(--radius-sm);
   background: var(--surface);
   animation: shimmer 1.4s ease-in-out infinite;
 }
 
 @keyframes shimmer {
-  0%, 100% { opacity: 0.5; }
-  50%       { opacity: 1; }
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
 }
 
 /* ─── Error banner ───────────────────────────────────────────────── */

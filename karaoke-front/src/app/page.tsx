@@ -89,19 +89,19 @@ export default function Home() {
 
             {trendingLoad ? (
               <div className={styles.trendingGrid}>
-                {Array.from({ length: 12 }).map((_, i) => (
+                {Array.from({ length: 20 }).map((_, i) => (
                   <div key={i} className={styles.trendingCardSkeleton} />
                 ))}
               </div>
             ) : (
               <div className={styles.trendingGrid}>
-                {trending.map((track, i) => (
+                {trending.slice(0, 20).map((track, i) => (
                   <button
                     key={i}
                     className={styles.trendingCard}
                     onClick={() => handleSearch(`${track.name} ${track.artist}`)}
                   >
-                    <div className={styles.trendingRank}>{i + 1}</div>
+                    <div className={styles.trendingRank} data-top={i < 3 ? "true" : undefined}>{i + 1}</div>
                     <div className={styles.trendingArt}>
                       <Image
                         src={track.art}
