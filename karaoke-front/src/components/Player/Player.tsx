@@ -49,6 +49,10 @@ export default function Player({
   const [karaokeMode, setKaraokeMode] = useState(false);
   const [pitch, setPitch]         = useState(0);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pitchShiftRef = useRef<any>(null);
+  const toneInitRef   = useRef(false);
+
   // ── Switch source whenever song or karaoke URL changes ────────────
   useEffect(() => {
     const el = audioRef.current;
@@ -75,10 +79,31 @@ export default function Player({
     if (audioRef.current) audioRef.current.volume = volume;
   }, [volume]);
 
-  // Sync pitch (playbackRate = 2^(semitones/12))
+  // ── Pitch shift via Tone.js (lazy-init on first button click) ────────────
+  const applyPitch = useCallback(async (semitones: number) => {
+    setPitch(semitones);
+
+    if (!toneInitRef.current) {
+      toneInitRef.current = true;
+      const { PitchShift, getContext, start, connect } = await import("tone");
+      await start();
+      const rawCtx = getContext().rawContext as AudioContext;
+
+      if (audioRef.current) {
+        const src = rawCtx.createMediaElementSource(audioRef.current);
+        const ps  = new PitchShift(0);
+        ps.toDestination();
+        connect(src, ps);
+        pitchShiftRef.current = ps;
+      }
+    }
+
+    if (pitchShiftRef.current) pitchShiftRef.current.pitch = semitones;
+  }, []);
+
   useEffect(() => {
-    if (audioRef.current) audioRef.current.playbackRate = Math.pow(2, pitch / 12);
-  }, [pitch]);
+    return () => { pitchShiftRef.current?.dispose(); };
+  }, []);
 
   const togglePlay = useCallback(() => {
     const el = audioRef.current;
@@ -215,7 +240,7 @@ export default function Player({
             <span className={styles.pitchLabel}>Tom</span>
             <button
               className={styles.pitchBtn}
-              onClick={() => setPitch(p => Math.max(-6, p - 1))}
+              onClick={() => applyPitch(Math.max(-6, pitch - 1))}
               aria-label="Diminuir um semitom"
               title="Diminuir tom (♭)"
             >♭</button>
@@ -225,7 +250,7 @@ export default function Player({
             </span>
             <button
               className={styles.pitchBtn}
-              onClick={() => setPitch(p => Math.min(6, p + 1))}
+              onClick={() => applyPitch(Math.min(6, pitch + 1))}
               aria-label="Aumentar um semitom"
               title="Aumentar tom (♯)"
             >♯</button>

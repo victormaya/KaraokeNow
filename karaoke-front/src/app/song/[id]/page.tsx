@@ -76,6 +76,13 @@ export default function SongPage() {
   const karaokeRef  = useRef<HTMLAudioElement>(null);
   const originalRef = useRef<HTMLAudioElement>(null);
 
+  // ── Pitch shift refs (Tone.js, lazy-init on first use) ───────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const karaokePSRef  = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originalPSRef = useRef<any>(null);
+  const toneInitRef   = useRef(false);
+
   // ── Player state ──────────────────────────────────────────────────────────
   const [playing,      setPlaying]      = useState(false);
   const [karaokeMode,  setKaraokeMode]  = useState(true);
@@ -218,12 +225,42 @@ export default function SongPage() {
     if (karaokeRef.current) setCurrent(karaokeRef.current.currentTime);
   }
 
-  // Sync pitch to both audio elements
+  // ── Pitch shift via Tone.js (lazy-init on first button click) ────────────
+  const applyPitch = useCallback(async (semitones: number) => {
+    setPitch(semitones);
+
+    if (!toneInitRef.current) {
+      toneInitRef.current = true;
+      const { PitchShift, getContext, start, connect } = await import("tone");
+      await start();
+      const rawCtx = getContext().rawContext as AudioContext;
+
+      if (karaokeRef.current) {
+        const src = rawCtx.createMediaElementSource(karaokeRef.current);
+        const ps  = new PitchShift(0);
+        ps.toDestination();
+        connect(src, ps);
+        karaokePSRef.current = ps;
+      }
+      if (originalRef.current) {
+        const src = rawCtx.createMediaElementSource(originalRef.current);
+        const ps  = new PitchShift(0);
+        ps.toDestination();
+        connect(src, ps);
+        originalPSRef.current = ps;
+      }
+    }
+
+    if (karaokePSRef.current)  karaokePSRef.current.pitch  = semitones;
+    if (originalPSRef.current) originalPSRef.current.pitch = semitones;
+  }, []);
+
   useEffect(() => {
-    const rate = Math.pow(2, pitch / 12);
-    if (karaokeRef.current)  karaokeRef.current.playbackRate  = rate;
-    if (originalRef.current) originalRef.current.playbackRate = rate;
-  }, [pitch]);
+    return () => {
+      karaokePSRef.current?.dispose();
+      originalPSRef.current?.dispose();
+    };
+  }, []);
 
   // ── Mode switch — both keep playing, just swap which has volume ───────────
   function switchMode(toKaraoke: boolean) {
@@ -369,7 +406,7 @@ export default function SongPage() {
             <span className={styles.pitchLabel}>Tom</span>
             <button
               className={styles.pitchBtn}
-              onClick={() => setPitch(p => Math.max(-6, p - 1))}
+              onClick={() => applyPitch(Math.max(-6, pitch - 1))}
               aria-label="Diminuir um semitom"
               title="Diminuir tom (♭)"
             >♭</button>
@@ -379,7 +416,7 @@ export default function SongPage() {
             </span>
             <button
               className={styles.pitchBtn}
-              onClick={() => setPitch(p => Math.min(6, p + 1))}
+              onClick={() => applyPitch(Math.min(6, pitch + 1))}
               aria-label="Aumentar um semitom"
               title="Aumentar tom (♯)"
             >♯</button>
