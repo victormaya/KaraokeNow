@@ -209,12 +209,10 @@ export default function Player({
             </div>
             <span className={styles.time}>{fmtTime(duration)}</span>
           </div>
-        </div>
 
-        {/* ── Right: karaoke button + volume ──────────────── */}
-        <div className={styles.actions}>
           {/* Pitch control */}
           <div className={styles.pitchRow}>
+            <span className={styles.pitchLabel}>Tom</span>
             <button
               className={styles.pitchBtn}
               onClick={() => setPitch(p => Math.max(-6, p - 1))}
@@ -232,7 +230,10 @@ export default function Player({
               title="Aumentar tom (♯)"
             >♯</button>
           </div>
+        </div>
 
+        {/* ── Right: karaoke button + volume ──────────────── */}
+        <div className={styles.actions}>
           {/* Volume */}
           <div className={styles.volumeRow}>
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
