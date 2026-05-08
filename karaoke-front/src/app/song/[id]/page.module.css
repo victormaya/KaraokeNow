@@ -695,6 +695,126 @@
   font-weight: 700;
 }
 
+/* ─── YouTube karaoke suggestions (loading screen) ──────────────────────── */
+
+.ytKaraokeBox {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(65, 88, 208, 0.07);
+  border: 1px solid rgba(65, 88, 208, 0.28);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.ytKaraokeHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 16px 10px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(65, 88, 208, 0.2);
+}
+
+.ytKaraokeTag {
+  margin-left: auto;
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.12);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  border-radius: 99px;
+  padding: 2px 9px;
+}
+
+.ytKaraokeItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  border-top: 1px solid rgba(65, 88, 208, 0.15);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition);
+}
+
+.ytKaraokeItem:hover { background: rgba(65, 88, 208, 0.1); }
+
+.ytKaraokeThumb {
+  position: relative;
+  width: 56px;
+  height: 32px;
+  border-radius: 4px;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+
+.ytKaraokeInfo {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ytKaraokeTitle {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.ytKaraokeChannel {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.ytKaraokePlay {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #60a5fa;
+  flex-shrink: 0;
+}
+
+.ytKaraokeNote {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 8px 16px 12px;
+  border-top: 1px solid rgba(65, 88, 208, 0.15);
+  line-height: 1.5;
+}
+
+/* ─── YouTube karaoke badge (player) ─────────────────────────────────────── */
+
+.ytBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  align-self: center;
+  padding: 5px 14px;
+  border-radius: 99px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+  color: #60a5fa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-top: -8px;
+}
+
 /* ─── Share modal ────────────────────────────────────────────────────────── */
 
 .modalOverlay {

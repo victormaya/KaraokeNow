@@ -79,6 +79,12 @@ def _format_duration(seconds: Optional[int]) -> str:
     return f"{m}:{s:02d}"
 
 
+KARAOKE_KEYWORDS = {
+    "karaoke", "karaokê", "instrumental", "sem vocal", "sem voz",
+    "backing track", "no vocals", "playback", "base musical", "pista",
+}
+
+
 def _search_sync(query: str, limit: int) -> list[dict]:
     ydl_opts = {
         **_base_ydl_opts(),
@@ -110,6 +116,51 @@ def _search_sync(query: str, limit: int) -> list[dict]:
         )
     return results
 
+
+
+def _direct_sync(job_id: str, video_id: str) -> None:
+    """Download-only worker: saves audio without vocal separation."""
+    job_dir = TEMP_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+    dedup_key = f"yt_{video_id}"
+
+    try:
+        jobs[job_id]["status"] = "downloading"
+        ydl_opts = {
+            **_base_ydl_opts(),
+            "outtmpl": str(job_dir / "audio.%(ext)s"),
+            "format": "bestaudio/best",
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+
+        candidates = [
+            p for p in job_dir.iterdir()
+            if p.stem == "audio" and p.suffix not in (".part", ".ytdl")
+        ]
+        if not candidates:
+            raise FileNotFoundError("Download failed – no audio file produced.")
+        downloaded = candidates[0]
+
+        import subprocess
+        cache_entry = CACHE_DIR / dedup_key
+        cache_entry.mkdir(parents=True, exist_ok=True)
+        audio_path = cache_entry / "audio.mp3"
+
+        if downloaded.suffix.lower() == ".mp3":
+            shutil.copy2(downloaded, audio_path)
+        else:
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", str(downloaded), "-q:a", "2", "-map", "a", str(audio_path)],
+                check=True, capture_output=True,
+            )
+
+        shutil.rmtree(job_dir, ignore_errors=True)
+        jobs[job_id] = {"status": "done", "audio_path": str(audio_path), "error": None}
+
+    except Exception as exc:
+        jobs[job_id] = {"status": "error", "audio_path": None, "error": str(exc)}
+        video_to_job.pop(dedup_key, None)
 
 
 def _process_sync(job_id: str, video_id: str) -> None:
@@ -218,6 +269,51 @@ def _process_sync(job_id: str, video_id: str) -> None:
 # ─────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────
+
+@app.get("/api/karaoke-search")
+async def search_karaoke(q: str):
+    """Search YouTube for ready-made karaoke versions of a song."""
+    if not q.strip():
+        return JSONResponse({"results": []})
+    try:
+        loop = asyncio.get_running_loop()
+        results = await loop.run_in_executor(executor, _search_sync, f"{q} karaoke", 8)
+        filtered = [
+            r for r in results
+            if any(kw in r["title"].lower() for kw in KARAOKE_KEYWORDS)
+        ]
+        return JSONResponse({"results": filtered[:3]})
+    except Exception:
+        return JSONResponse({"results": []})
+
+
+@app.post("/api/direct/{video_id}")
+async def start_direct(video_id: str, background_tasks: BackgroundTasks):
+    """Download audio only (no vocal separation) — for YouTube karaoke videos."""
+    dedup_key = f"yt_{video_id}"
+
+    cached = CACHE_DIR / dedup_key / "audio.mp3"
+    if cached.exists():
+        job_id = str(uuid.uuid4())
+        jobs[job_id] = {"status": "done", "audio_path": str(cached), "error": None}
+        return JSONResponse({"job_id": job_id, "status": "done"})
+
+    if dedup_key in video_to_job:
+        existing = video_to_job[dedup_key]
+        if existing in jobs:
+            return JSONResponse({"job_id": existing, "status": jobs[existing]["status"]})
+
+    job_id = str(uuid.uuid4())
+    jobs[job_id] = {"status": "pending", "audio_path": None, "error": None}
+    video_to_job[dedup_key] = job_id
+
+    async def _run():
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(executor, _direct_sync, job_id, video_id)
+
+    background_tasks.add_task(_run)
+    return JSONResponse({"job_id": job_id, "status": "pending"})
+
 
 @app.get("/api/search")
 async def search_youtube(q: str, limit: int = 12):

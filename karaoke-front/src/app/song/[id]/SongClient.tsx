@@ -7,6 +7,7 @@ import type { JobStatus } from "@/types";
 import styles from "./page.module.css";
 
 interface LrcLine { time: number; text: string; }
+interface YtKaraoke { id: string; title: string; channel: string; thumbnail: string; }
 
 function parseLrc(lrc: string): LrcLine[] {
   const re = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
@@ -47,6 +48,12 @@ const STATUS_LABEL: Record<string, string> = {
   done:        "Concluído!",
 };
 
+const STATUS_LABEL_DIRECT: Record<string, string> = {
+  pending:     "Iniciando download…",
+  downloading: "Baixando karaokê do YouTube…",
+  done:        "Pronto!",
+};
+
 export default function SongClient() {
   const params       = useParams();
   const searchParams = useSearchParams();
@@ -56,15 +63,20 @@ export default function SongClient() {
   const title     = searchParams.get("title")     ?? "";
   const channel   = searchParams.get("channel")   ?? "";
   const thumbnail = searchParams.get("thumbnail") ?? "";
+  const direct    = searchParams.get("direct")    === "1";
 
   // ── Job state ────────────────────────────────────────────────────────────
-  const [jobStatus,    setJobStatus]    = useState<JobStatus>("pending");
-  const [progress,     setProgress]     = useState(0);
-  const [karaokeUrl,   setKaraokeUrl]   = useState<string | null>(null);
-  const [jobError,     setJobError]     = useState<string | null>(null);
-  const [ready,        setReady]        = useState(false);
-  const [isFirstTime,  setIsFirstTime]  = useState(false);
+  const [jobStatus,   setJobStatus]   = useState<JobStatus>("pending");
+  const [progress,    setProgress]    = useState(0);
+  const [karaokeUrl,  setKaraokeUrl]  = useState<string | null>(null);
+  const [jobError,    setJobError]    = useState<string | null>(null);
+  const [ready,       setReady]       = useState(false);
+  const [isFirstTime, setIsFirstTime] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── YouTube karaoke suggestions ──────────────────────────────────────────
+  const [ytKaraokes,       setYtKaraokes]       = useState<YtKaraoke[]>([]);
+  const [ytKaraokesDone,   setYtKaraokesDone]   = useState(false);
 
   // ── Lyrics ───────────────────────────────────────────────────────────────
   const [lrcLines,      setLrcLines]      = useState<LrcLine[]>([]);
@@ -84,10 +96,10 @@ export default function SongClient() {
   const toneInitRef   = useRef(false);
 
   // ── Player state ──────────────────────────────────────────────────────────
-  const [playing,      setPlaying]      = useState(false);
-  const [karaokeMode,  setKaraokeMode]  = useState(true);
-  const [current,      setCurrent]      = useState(0);
-  const [duration,     setDuration]     = useState(0);
+  const [playing,     setPlaying]     = useState(false);
+  const [karaokeMode, setKaraokeMode] = useState(true);
+  const [current,     setCurrent]     = useState(0);
+  const [duration,    setDuration]    = useState(0);
   const [audioLoading,   setAudioLoading]   = useState(true);
   const [pitch,          setPitch]          = useState(0);
   const [copied,         setCopied]         = useState(false);
@@ -96,27 +108,32 @@ export default function SongClient() {
   // ── Progress animation ───────────────────────────────────────────────────
   useEffect(() => {
     const targets: Record<string, number> = {
-      pending: 8, downloading: 32, separating: 88, done: 100,
+      pending: 8, downloading: 45, separating: 88, done: 100,
     };
+    if (direct) { targets.downloading = 80; }
     const target = targets[jobStatus] ?? 0;
     if (jobStatus === "done") { setProgress(100); return; }
     const id = setInterval(() => {
-      setProgress(prev => prev < target ? Math.min(prev + 0.4, target) : prev);
+      setProgress(prev => prev < target ? Math.min(prev + 0.5, target) : prev);
     }, 400);
     return () => clearInterval(id);
-  }, [jobStatus]);
+  }, [jobStatus, direct]);
 
   // ── Start job & lyrics on mount ──────────────────────────────────────────
   useEffect(() => {
     startJob();
     fetchLyrics();
+    if (!direct) fetchYtKaraokes();
     return () => clearPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function startJob() {
     try {
-      const res = await fetch(`/api/process/${videoId}`, { method: "POST" });
+      const endpoint = direct
+        ? `/api/direct/${videoId}`
+        : `/api/process/${videoId}`;
+      const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.status === "done") {
@@ -165,14 +182,33 @@ export default function SongClient() {
       const res = await fetch(`/api/lyrics?${q}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.lrc) {
-          setLrcLines(parseLrc(data.lrc));
-        } else {
-          setLyrics(data.lyrics || null);
-        }
+        if (data.lrc)    setLrcLines(parseLrc(data.lrc));
+        else             setLyrics(data.lyrics || null);
       }
     } catch { /* ignore */ }
     setLyricsLoading(false);
+  }
+
+  async function fetchYtKaraokes() {
+    if (!title) { setYtKaraokesDone(true); return; }
+    try {
+      const res = await fetch(`/api/karaoke-search?q=${encodeURIComponent(title)}`);
+      if (res.ok) {
+        const data = await res.json();
+        setYtKaraokes(data.results ?? []);
+      }
+    } catch { /* ignore */ }
+    setYtKaraokesDone(true);
+  }
+
+  function useYouTubeKaraoke(song: YtKaraoke) {
+    const params = new URLSearchParams({
+      title:     song.title,
+      channel:   song.channel,
+      thumbnail: song.thumbnail,
+      direct:    "1",
+    });
+    router.push(`/song/${song.id}?${params}`);
   }
 
   const activeLineIdx = useMemo(() => {
@@ -195,8 +231,9 @@ export default function SongClient() {
   useEffect(() => {
     if (!ready || !karaokeUrl) return;
     if (karaokeRef.current)  karaokeRef.current.src  = karaokeUrl;
-    if (originalRef.current) originalRef.current.src = `/api/original/${videoId}`;
-  }, [ready, karaokeUrl, videoId]);
+    if (originalRef.current && !direct)
+      originalRef.current.src = `/api/original/${videoId}`;
+  }, [ready, karaokeUrl, videoId, direct]);
 
   // ── Player controls ───────────────────────────────────────────────────────
   const togglePlay = useCallback(() => {
@@ -228,13 +265,11 @@ export default function SongClient() {
   // ── Pitch shift via Tone.js (lazy-init on first button click) ────────────
   const applyPitch = useCallback(async (semitones: number) => {
     setPitch(semitones);
-
     if (!toneInitRef.current) {
       toneInitRef.current = true;
       const { PitchShift, getContext, start, connect } = await import("tone");
       await start();
       const rawCtx = getContext().rawContext as AudioContext;
-
       if (karaokeRef.current) {
         const src = rawCtx.createMediaElementSource(karaokeRef.current);
         const ps  = new PitchShift(0);
@@ -242,7 +277,7 @@ export default function SongClient() {
         connect(src, ps);
         karaokePSRef.current = ps;
       }
-      if (originalRef.current) {
+      if (originalRef.current && !direct) {
         const src = rawCtx.createMediaElementSource(originalRef.current);
         const ps  = new PitchShift(0);
         ps.toDestination();
@@ -250,10 +285,9 @@ export default function SongClient() {
         originalPSRef.current = ps;
       }
     }
-
     if (karaokePSRef.current)  karaokePSRef.current.pitch  = semitones;
     if (originalPSRef.current) originalPSRef.current.pitch = semitones;
-  }, []);
+  }, [direct]);
 
   useEffect(() => {
     return () => {
@@ -262,9 +296,7 @@ export default function SongClient() {
     };
   }, []);
 
-  function handleShare() {
-    setShareModalOpen(true);
-  }
+  function handleShare() { setShareModalOpen(true); }
 
   async function copyLink() {
     const url = window.location.href;
@@ -283,7 +315,6 @@ export default function SongClient() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  // ── Mode switch — both keep playing, just swap which has volume ───────────
   function switchMode(toKaraoke: boolean) {
     if (toKaraoke === karaokeMode) return;
     const t = karaokeRef.current?.currentTime ?? current;
@@ -302,6 +333,8 @@ export default function SongClient() {
       </div>
     );
   }
+
+  const statusLabels = direct ? STATUS_LABEL_DIRECT : STATUS_LABEL;
 
   // ── Loading screen ────────────────────────────────────────────────────────
   if (!ready) {
@@ -328,8 +361,10 @@ export default function SongClient() {
             </div>
             <span className={styles.progressPct}>{Math.round(progress)}%</span>
           </div>
-          <p className={styles.statusText}>{STATUS_LABEL[jobStatus] ?? "Processando…"}</p>
-          {isFirstTime && (
+          <p className={styles.statusText}>{statusLabels[jobStatus] ?? "Processando…"}</p>
+
+          {/* AI processing notices (only when not direct) */}
+          {!direct && isFirstTime && (
             <>
               <div className={styles.cacheNotice}>
                 <span className={styles.cacheNoticeIcon}>⚡</span>
@@ -340,6 +375,36 @@ export default function SongClient() {
                 <span>Não atualize a página nem volte agora. Se sair e escolher a mesma música novamente, o carregamento será reiniciado do zero.</span>
               </div>
             </>
+          )}
+
+          {/* YouTube karaoke suggestions */}
+          {!direct && ytKaraokesDone && ytKaraokes.length > 0 && (
+            <div className={styles.ytKaraokeBox}>
+              <div className={styles.ytKaraokeHeader}>
+                <span>🎬</span>
+                <span>Karaokês prontos no YouTube</span>
+                <span className={styles.ytKaraokeTag}>Instantâneo</span>
+              </div>
+              {ytKaraokes.map(song => (
+                <button
+                  key={song.id}
+                  className={styles.ytKaraokeItem}
+                  onClick={() => useYouTubeKaraoke(song)}
+                >
+                  <div className={styles.ytKaraokeThumb}>
+                    <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="48px" />
+                  </div>
+                  <div className={styles.ytKaraokeInfo}>
+                    <span className={styles.ytKaraokeTitle}>{song.title}</span>
+                    <span className={styles.ytKaraokeChannel}>{song.channel}</span>
+                  </div>
+                  <span className={styles.ytKaraokePlay}>▶ Usar este</span>
+                </button>
+              ))}
+              <p className={styles.ytKaraokeNote}>
+                Ou aguarde o processamento com IA para melhor qualidade
+              </p>
+            </div>
           )}
         </div>
       </div>
@@ -379,6 +444,13 @@ export default function SongClient() {
             </div>
           </div>
 
+          {/* Direct mode badge */}
+          {direct && (
+            <div className={styles.ytBadge}>
+              🎬 Karaokê do YouTube
+            </div>
+          )}
+
           <audio
             ref={karaokeRef}
             onLoadedMetadata={() => {
@@ -391,7 +463,7 @@ export default function SongClient() {
             onEnded={() => setPlaying(false)}
             preload="auto"
           />
-          <audio ref={originalRef} muted preload="auto" />
+          {!direct && <audio ref={originalRef} muted preload="auto" />}
 
           <div className={styles.controls}>
             <button
@@ -415,27 +487,31 @@ export default function SongClient() {
             </button>
           </div>
 
-          <div className={styles.switchRow}>
-            <span className={`${styles.switchLabel} ${!karaokeMode ? styles.switchLabelActive : ""}`}>
-              Original
-            </span>
-            <button
-              className={`${styles.switchTrack} ${karaokeMode ? styles.switchOn : ""}`}
-              onClick={() => switchMode(!karaokeMode)}
-              aria-label="Alternar entre original e karaokê"
-              role="switch"
-              aria-checked={karaokeMode}
-            >
-              <span className={styles.switchThumb} />
-            </button>
-            <span className={`${styles.switchLabel} ${karaokeMode ? styles.switchLabelActive : ""}`}>
-              🎤 Karaokê
-            </span>
-          </div>
-
-          <p className={styles.switchHint}>
-            {karaokeMode ? "Sem vocais — cante você!" : "Versão original com vocais"}
-          </p>
+          {/* Mode switch — hidden in direct mode */}
+          {!direct && (
+            <>
+              <div className={styles.switchRow}>
+                <span className={`${styles.switchLabel} ${!karaokeMode ? styles.switchLabelActive : ""}`}>
+                  Original
+                </span>
+                <button
+                  className={`${styles.switchTrack} ${karaokeMode ? styles.switchOn : ""}`}
+                  onClick={() => switchMode(!karaokeMode)}
+                  aria-label="Alternar entre original e karaokê"
+                  role="switch"
+                  aria-checked={karaokeMode}
+                >
+                  <span className={styles.switchThumb} />
+                </button>
+                <span className={`${styles.switchLabel} ${karaokeMode ? styles.switchLabelActive : ""}`}>
+                  🎤 Karaokê
+                </span>
+              </div>
+              <p className={styles.switchHint}>
+                {karaokeMode ? "Sem vocais — cante você!" : "Versão original com vocais"}
+              </p>
+            </>
+          )}
 
           <div className={styles.pitchRow}>
             <span className={styles.pitchLabel}>Tom</span>
@@ -523,13 +599,15 @@ export default function SongClient() {
             )}
           </button>
 
-          <button
-            className={`${styles.miniMode} ${karaokeMode ? styles.miniModeActive : ""}`}
-            onClick={() => switchMode(!karaokeMode)}
-            title={karaokeMode ? "Karaokê ativo" : "Original ativo"}
-          >
-            {karaokeMode ? "🎤" : "🎵"}
-          </button>
+          {!direct && (
+            <button
+              className={`${styles.miniMode} ${karaokeMode ? styles.miniModeActive : ""}`}
+              onClick={() => switchMode(!karaokeMode)}
+              title={karaokeMode ? "Karaokê ativo" : "Original ativo"}
+            >
+              {karaokeMode ? "🎤" : "🎵"}
+            </button>
+          )}
         </div>
       </div>
 
