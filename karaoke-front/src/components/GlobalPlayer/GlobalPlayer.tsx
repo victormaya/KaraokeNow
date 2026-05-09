@@ -20,6 +20,7 @@ export default function GlobalPlayer() {
   }
 
   function goToSong() {
+    if (!track) return;
     const params = new URLSearchParams({
       title:     track.title,
       channel:   track.channel,
