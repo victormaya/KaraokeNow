@@ -24,15 +24,17 @@ function parseLrc(lrc: string): LrcLine[] {
 }
 
 function parseSongMeta(rawTitle: string): { artist: string; songTitle: string } {
-  const seps = [" - ", " – ", " — "];
-  for (const sep of seps) {
-    if (rawTitle.includes(sep)) {
-      const [first, ...rest] = rawTitle.split(sep);
-      const songTitle = rest.join(sep).replace(/\(.*?\)|\[.*?\]/g, "").trim();
-      return { artist: first.trim(), songTitle };
-    }
-  }
-  return { artist: "", songTitle: rawTitle.replace(/\(.*?\)|\[.*?\]/g, "").trim() };
+  // Remove bracketed karaoke noise first: [Karaoke], (Official Karaoke Version), etc.
+  let s = rawTitle.replace(/[\[(][^\])\n]*?(?:karaok[eê]|instrumental|lyric|version|cover|official)[^\])]*?[\])]/gi, "");
+  // Remove bare karaoke noise words
+  s = s.replace(/\b(karaok[eê]|instrumental|no\s+vocals?|backing\s+track|with\s+lyrics?|originally\s+by|cover)\b/gi, "");
+  // Collapse spaces and strip trailing separators
+  s = s.replace(/\s{2,}/g, " ").replace(/[\s\-–—|]+$/, "").trim();
+
+  // Split on -, –, —, or | (whichever comes first)
+  const m = s.match(/^(.+?)\s*[-–—|]\s*(.+)$/);
+  if (m) return { artist: m[1].trim(), songTitle: m[2].trim() };
+  return { artist: "", songTitle: s };
 }
 
 const STATUS_LABEL: Record<string, string> = {

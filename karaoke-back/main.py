@@ -443,7 +443,7 @@ async def get_lyrics(artist: str = "", title: str = ""):
                 if lrc or lyrics:
                     return JSONResponse({"lrc": lrc, "lyrics": lyrics})
 
-            # 2. Fuzzy search fallback
+            # 2. Fuzzy search: artist + title
             q = f"{artist.strip()} {title.strip()}".strip()
             search_url = f"https://lrclib.net/api/search?q={quote(q)}"
             sresp = await client.get(search_url, headers=headers)
@@ -455,6 +455,19 @@ async def get_lyrics(artist: str = "", title: str = ""):
                     lyrics = best.get("plainLyrics")  or None
                     if lrc or lyrics:
                         return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+
+            # 2b. Fuzzy search: title only (helps when artist came from a karaoke channel name)
+            if artist.strip() and title.strip():
+                t2_url = f"https://lrclib.net/api/search?q={quote(title.strip())}"
+                t2resp = await client.get(t2_url, headers=headers)
+                if t2resp.status_code == 200:
+                    t2results = t2resp.json()
+                    if t2results:
+                        best2 = t2results[0]
+                        lrc    = best2.get("syncedLyrics") or None
+                        lyrics = best2.get("plainLyrics")  or None
+                        if lrc or lyrics:
+                            return JSONResponse({"lrc": lrc, "lyrics": lyrics})
 
             # 3. lyrics.ovh — larger database, plain text only
             async def _try_ovh(a: str, t: str) -> str | None:
