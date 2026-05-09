@@ -59,7 +59,7 @@ export default function SongClient() {
   const [progress,    setProgress]    = useState(0);
   const [karaokeUrl,  setKaraokeUrl]  = useState<string | null>(null);
   const [jobError,    setJobError]    = useState<string | null>(null);
-  const [ready,       setReady]       = useState(direct);
+  const [ready,       setReady]       = useState(direct || player.track?.id === videoId);
   const [isFirstTime, setIsFirstTime] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -185,8 +185,8 @@ export default function SongClient() {
     if (!ready || !karaokeUrl) return;
     if (player.track?.id !== videoId) {
       player.setTrack({ id: videoId, title, channel, thumbnail }, karaokeUrl);
+      if (!direct) player.setOriginalTrack(`/api/original/${videoId}`);
     }
-    if (!direct) player.setOriginalTrack(`/api/original/${videoId}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, karaokeUrl]);
 
