@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import ClientLayout from "./ClientLayout";
 
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://karaokenow.com.br";
 
@@ -105,7 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body>{children}</body>
+      <body><ClientLayout>{children}</ClientLayout></body>
     </html>
   );
 }
