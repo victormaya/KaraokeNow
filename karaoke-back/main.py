@@ -421,116 +421,126 @@ async def cleanup_job(job_id: str):
 
 @app.get("/api/lyrics")
 async def get_lyrics(artist: str = "", title: str = ""):
-    """Proxy to lrclib.net — returns synced LRC and plain lyrics.
-    Falls back to fuzzy search if exact match yields nothing."""
     from urllib.parse import quote
+
     if not artist and not title:
         return JSONResponse({"lrc": None, "lyrics": None})
-    headers = {"Lrclib-Client": "KaraokeNow/1.0"}
+
+    art = artist.strip()
+    tit = title.strip()
+
+    async def _lrclib_search(client: httpx.AsyncClient, q: str):
+        headers = {"Lrclib-Client": "KaraokeNow/1.0"}
+        r = await client.get(f"https://lrclib.net/api/search?q={quote(q)}", headers=headers)
+        if r.status_code == 200:
+            results = r.json()
+            if results:
+                best = results[0]
+                return best.get("syncedLyrics") or None, best.get("plainLyrics") or None
+        return None, None
+
+    async def _lrclib_exact(client: httpx.AsyncClient, a: str, t: str):
+        headers = {"Lrclib-Client": "KaraokeNow/1.0"}
+        url = f"https://lrclib.net/api/get?artist_name={quote(a)}&track_name={quote(t)}"
+        r = await client.get(url, headers=headers)
+        if r.status_code == 200:
+            d = r.json()
+            return d.get("syncedLyrics") or None, d.get("plainLyrics") or None
+        return None, None
+
+    async def _try_ovh(client: httpx.AsyncClient, a: str, t: str):
+        if not a or not t:
+            return None
+        try:
+            r = await client.get(f"https://api.lyrics.ovh/v1/{quote(a)}/{quote(t)}", timeout=8)
+            if r.status_code == 200:
+                return r.json().get("lyrics") or None
+        except Exception:
+            pass
+        return None
+
+    async def _try_textyl(client: httpx.AsyncClient, q: str):
+        try:
+            r = await client.get(f"https://api.textyl.co/api/lyrics?q={quote(q)}", timeout=8)
+            if r.status_code == 200:
+                lines = r.json()
+                if isinstance(lines, list) and lines:
+                    def _fmt(s: float) -> str:
+                        m2 = int(s) // 60
+                        return f"[{m2:02d}:{s - m2*60:05.2f}]"
+                    lrc = "\n".join(
+                        f"{_fmt(ln['seconds'])}{ln['lyrics']}"
+                        for ln in lines if "seconds" in ln and "lyrics" in ln
+                    )
+                    return lrc or None
+        except Exception:
+            pass
+        return None
+
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            # 1. Exact match
-            url = (
-                f"https://lrclib.net/api/get"
-                f"?artist_name={quote(artist.strip())}"
-                f"&track_name={quote(title.strip())}"
-            )
-            resp = await client.get(url, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                lrc     = data.get("syncedLyrics") or None
-                lyrics  = data.get("plainLyrics")  or None
+
+            # ── Step 0: normalize artist+title via iTunes ──────────────────────
+            # iTunes returns the real artistName/trackName regardless of how
+            # messy the input is (karaoke channel names, wrong order, etc.)
+            itunes_art, itunes_tit = art, tit
+            try:
+                q_itunes = f"{art} {tit}".strip() if art else tit
+                ir = await client.get(
+                    f"https://itunes.apple.com/search"
+                    f"?term={quote(q_itunes)}&media=music&entity=song&limit=1",
+                    timeout=6,
+                )
+                if ir.status_code == 200:
+                    hits = ir.json().get("results", [])
+                    if hits:
+                        itunes_art = hits[0].get("artistName", art) or art
+                        itunes_tit = hits[0].get("trackName",  tit) or tit
+            except Exception:
+                pass  # use original values
+
+            # ── 1. lrclib exact — with iTunes-normalized names ─────────────────
+            lrc, lyrics = await _lrclib_exact(client, itunes_art, itunes_tit)
+            if lrc or lyrics:
+                return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+
+            # ── 2. lrclib fuzzy — iTunes names ────────────────────────────────
+            lrc, lyrics = await _lrclib_search(client, f"{itunes_art} {itunes_tit}")
+            if lrc or lyrics:
+                return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+
+            # ── 3. lrclib fuzzy — original parsed names (fallback) ────────────
+            if (itunes_art, itunes_tit) != (art, tit):
+                lrc, lyrics = await _lrclib_search(client, f"{art} {tit}".strip())
                 if lrc or lyrics:
                     return JSONResponse({"lrc": lrc, "lyrics": lyrics})
 
-            # 2. Fuzzy search: artist + title
-            q = f"{artist.strip()} {title.strip()}".strip()
-            search_url = f"https://lrclib.net/api/search?q={quote(q)}"
-            sresp = await client.get(search_url, headers=headers)
-            if sresp.status_code == 200:
-                results = sresp.json()
-                if results:
-                    best = results[0]
-                    lrc    = best.get("syncedLyrics") or None
-                    lyrics = best.get("plainLyrics")  or None
-                    if lrc or lyrics:
-                        return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+            # ── 4. lrclib fuzzy — title only ──────────────────────────────────
+            lrc, lyrics = await _lrclib_search(client, itunes_tit or tit)
+            if lrc or lyrics:
+                return JSONResponse({"lrc": lrc, "lyrics": lyrics})
 
-            # 2b. Fuzzy search: title only (helps when artist came from a karaoke channel name)
-            if artist.strip() and title.strip():
-                t2_url = f"https://lrclib.net/api/search?q={quote(title.strip())}"
-                t2resp = await client.get(t2_url, headers=headers)
-                if t2resp.status_code == 200:
-                    t2results = t2resp.json()
-                    if t2results:
-                        best2 = t2results[0]
-                        lrc    = best2.get("syncedLyrics") or None
-                        lyrics = best2.get("plainLyrics")  or None
-                        if lrc or lyrics:
-                            return JSONResponse({"lrc": lrc, "lyrics": lyrics})
+            # ── 5. lyrics.ovh ─────────────────────────────────────────────────
+            plain = await _try_ovh(client, itunes_art, itunes_tit)
+            if plain:
+                return JSONResponse({"lrc": None, "lyrics": plain})
 
-            # 3. lyrics.ovh — larger database, plain text only
-            async def _try_ovh(a: str, t: str) -> str | None:
-                if not a or not t:
-                    return None
-                try:
-                    r = await client.get(
-                        f"https://api.lyrics.ovh/v1/{quote(a)}/{quote(t)}",
-                        timeout=8,
-                    )
-                    if r.status_code == 200:
-                        return r.json().get("lyrics") or None
-                except Exception:
-                    pass
-                return None
-
-            art = artist.strip()
-            tit = title.strip()
-
-            # 3a. artist + title as-is
-            if art and tit:
-                plain = await _try_ovh(art, tit)
-                if plain:
-                    return JSONResponse({"lrc": None, "lyrics": plain})
-
-            # 3b. artist empty — try splitting the title (e.g. "Marilia Mendonca Infiel")
-            if not art and tit:
+            if not art:
                 words = tit.split()
                 for split_at in (2, 1, 3):
                     if len(words) > split_at:
-                        plain = await _try_ovh(
-                            " ".join(words[:split_at]),
-                            " ".join(words[split_at:]),
-                        )
+                        plain = await _try_ovh(client, " ".join(words[:split_at]), " ".join(words[split_at:]))
                         if plain:
                             return JSONResponse({"lrc": None, "lyrics": plain})
 
-            # 4. textyl.co — returns synced lines, free, no auth
-            q_textyl = f"{art} {tit}".strip() if art else tit
-            if q_textyl:
-                try:
-                    tr = await client.get(
-                        f"https://api.textyl.co/api/lyrics?q={quote(q_textyl)}",
-                        timeout=8,
-                    )
-                    if tr.status_code == 200:
-                        lines = tr.json()
-                        if isinstance(lines, list) and lines:
-                            def _sec_to_lrc(s: float) -> str:
-                                m2 = int(s) // 60
-                                s2 = s - m2 * 60
-                                return f"[{m2:02d}:{s2:05.2f}]"
-                            lrc_lines = "\n".join(
-                                f"{_sec_to_lrc(ln['seconds'])}{ln['lyrics']}"
-                                for ln in lines
-                                if "seconds" in ln and "lyrics" in ln
-                            )
-                            if lrc_lines:
-                                return JSONResponse({"lrc": lrc_lines, "lyrics": None})
-                except Exception:
-                    pass
+            # ── 6. textyl.co ──────────────────────────────────────────────────
+            lrc = await _try_textyl(client, f"{itunes_art} {itunes_tit}".strip())
+            if lrc:
+                return JSONResponse({"lrc": lrc, "lyrics": None})
+
     except Exception:
         pass
+
     return JSONResponse({"lrc": None, "lyrics": None})
 
 
