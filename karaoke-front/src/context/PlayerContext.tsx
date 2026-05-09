@@ -14,7 +14,7 @@ export interface Track {
 
 interface PlayerCtxValue {
   track: Track | null;
-  audioRef: RefObject<HTMLAudioElement>;
+  audioRef: RefObject<HTMLAudioElement | null>;
   playing: boolean;
   currentTime: number;
   duration: number;
