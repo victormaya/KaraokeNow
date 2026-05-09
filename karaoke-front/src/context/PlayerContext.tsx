@@ -13,6 +13,7 @@ export interface Track {
 }
 
 interface PlayerCtxValue {
+  // Main track
   track: Track | null;
   audioRef: RefObject<HTMLAudioElement | null>;
   playing: boolean;
@@ -23,45 +24,93 @@ interface PlayerCtxValue {
   play: () => void;
   pause: () => void;
   seek: (time: number) => void;
+  // Pitch
+  pitch: number;
   applyPitch: (semitones: number) => Promise<void>;
+  // Voice toggle (original audio)
+  originalRef: RefObject<HTMLAudioElement | null>;
+  hasOriginal: boolean;
+  karaokeMode: boolean;
+  setOriginalTrack: (url: string) => void;
+  switchMode: (toKaraoke: boolean) => void;
 }
 
 const Ctx = createContext<PlayerCtxValue | null>(null);
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [track,        setTrackState]  = useState<Track | null>(null);
-  const [playing,      setPlaying]     = useState(false);
-  const [currentTime,  setCurrentTime] = useState(0);
-  const [duration,     setDuration]    = useState(0);
+  const audioRef    = useRef<HTMLAudioElement>(null);
+  const originalRef = useRef<HTMLAudioElement>(null);
+
+  const [track,        setTrackState]   = useState<Track | null>(null);
+  const [playing,      setPlaying]      = useState(false);
+  const [currentTime,  setCurrentTime]  = useState(0);
+  const [duration,     setDuration]     = useState(0);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [pitch,        setPitch]        = useState(0);
+  const [hasOriginal,  setHasOriginal]  = useState(false);
+  const [karaokeMode,  setKaraokeMode]  = useState(true);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pitchRef   = useRef<any>(null);
-  const toneReady  = useRef(false);
+  const karaokePSRef  = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const originalPSRef = useRef<any>(null);
+  const toneReady     = useRef(false);
 
   const setTrack = useCallback((newTrack: Track, audioUrl: string) => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = audioUrl;
     }
+    if (originalRef.current) {
+      originalRef.current.pause();
+      originalRef.current.src = "";
+    }
     setTrackState(newTrack);
     setPlaying(false);
     setCurrentTime(0);
     setDuration(0);
     setAudioLoading(true);
-    if (pitchRef.current) pitchRef.current.pitch = 0;
+    setHasOriginal(false);
+    setKaraokeMode(true);
+    setPitch(0);
+    if (karaokePSRef.current)  karaokePSRef.current.pitch  = 0;
+    if (originalPSRef.current) originalPSRef.current.pitch = 0;
   }, []);
 
-  const play  = useCallback(() => { audioRef.current?.play().catch(() => {}); }, []);
-  const pause = useCallback(() => { audioRef.current?.pause(); }, []);
+  const setOriginalTrack = useCallback((url: string) => {
+    if (originalRef.current) {
+      originalRef.current.src = url;
+      originalRef.current.muted = true;
+    }
+    setHasOriginal(true);
+  }, []);
+
+  const switchMode = useCallback((toKaraoke: boolean) => {
+    const t = audioRef.current?.currentTime ?? 0;
+    if (originalRef.current) originalRef.current.currentTime = t;
+    if (audioRef.current)    audioRef.current.muted    = !toKaraoke;
+    if (originalRef.current) originalRef.current.muted =  toKaraoke;
+    setKaraokeMode(toKaraoke);
+  }, []);
+
+  const play = useCallback(() => {
+    audioRef.current?.play().catch(() => {});
+    if (hasOriginal && originalRef.current) originalRef.current.play().catch(() => {});
+  }, [hasOriginal]);
+
+  const pause = useCallback(() => {
+    audioRef.current?.pause();
+    originalRef.current?.pause();
+  }, []);
 
   const seek = useCallback((time: number) => {
-    if (audioRef.current) audioRef.current.currentTime = time;
+    if (audioRef.current)    audioRef.current.currentTime    = time;
+    if (originalRef.current) originalRef.current.currentTime = time;
     setCurrentTime(time);
   }, []);
 
   const applyPitch = useCallback(async (semitones: number) => {
+    setPitch(semitones);
     if (!toneReady.current) {
       toneReady.current = true;
       try {
@@ -73,20 +122,30 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           const ps  = new PitchShift(semitones);
           ps.toDestination();
           connect(src, ps);
-          pitchRef.current = ps;
+          karaokePSRef.current = ps;
+        }
+        if (originalRef.current) {
+          const src = rawCtx.createMediaElementSource(originalRef.current);
+          const ps  = new PitchShift(semitones);
+          ps.toDestination();
+          connect(src, ps);
+          originalPSRef.current = ps;
         }
       } catch {
         toneReady.current = false;
       }
-    } else if (pitchRef.current) {
-      pitchRef.current.pitch = semitones;
+    } else {
+      if (karaokePSRef.current)  karaokePSRef.current.pitch  = semitones;
+      if (originalPSRef.current) originalPSRef.current.pitch = semitones;
     }
   }, []);
 
   return (
     <Ctx.Provider value={{
       track, audioRef, playing, currentTime, duration, audioLoading,
-      setTrack, play, pause, seek, applyPitch,
+      setTrack, play, pause, seek,
+      pitch, applyPitch,
+      originalRef, hasOriginal, karaokeMode, setOriginalTrack, switchMode,
     }}>
       <audio
         ref={audioRef}
@@ -99,6 +158,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         onCanPlay={() => setAudioLoading(false)}
         preload="auto"
       />
+      <audio ref={originalRef} muted preload="auto" />
       {children}
     </Ctx.Provider>
   );

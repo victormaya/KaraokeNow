@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import type { JobStatus } from "@/types";
@@ -54,7 +54,7 @@ export default function SongClient() {
   const thumbnail = searchParams.get("thumbnail") ?? "";
   const direct    = searchParams.get("direct")    === "1";
 
-  // ── Job state ────────────────────────────────────────────────────────────
+  // ── Job state ─────────────────────────────────────────────────────────────
   const [jobStatus,   setJobStatus]   = useState<JobStatus>("pending");
   const [progress,    setProgress]    = useState(0);
   const [karaokeUrl,  setKaraokeUrl]  = useState<string | null>(null);
@@ -63,30 +63,21 @@ export default function SongClient() {
   const [isFirstTime, setIsFirstTime] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── YouTube karaoke suggestions ──────────────────────────────────────────
+  // ── YouTube karaoke suggestions ───────────────────────────────────────────
   const [ytKaraokes,     setYtKaraokes]     = useState<YtKaraoke[]>([]);
   const [ytKaraokesDone, setYtKaraokesDone] = useState(false);
 
-  // ── Lyrics ───────────────────────────────────────────────────────────────
+  // ── Lyrics ────────────────────────────────────────────────────────────────
   const [lrcLines,      setLrcLines]      = useState<LrcLine[]>([]);
   const [lyrics,        setLyrics]        = useState<string | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(true);
   const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
 
-  // ── Original audio (voice toggle, local only) ─────────────────────────────
-  const originalRef = useRef<HTMLAudioElement>(null);
-
-  // ── Original audio pitch shift (local) ───────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const originalPSRef = useRef<any>(null);
-
-  // ── Player state ──────────────────────────────────────────────────────────
-  const [karaokeMode, setKaraokeMode] = useState(true);
-  const [pitch,       setPitch]       = useState(0);
+  // ── Share ─────────────────────────────────────────────────────────────────
   const [copied,         setCopied]         = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
 
-  // ── Progress animation ───────────────────────────────────────────────────
+  // ── Progress animation ────────────────────────────────────────────────────
   useEffect(() => {
     const targets: Record<string, number> = {
       pending: 8, downloading: 45, separating: 88, done: 100,
@@ -99,7 +90,7 @@ export default function SongClient() {
     return () => clearInterval(id);
   }, [jobStatus]);
 
-  // ── Start job & lyrics on mount ──────────────────────────────────────────
+  // ── Start job + lyrics on mount ───────────────────────────────────────────
   useEffect(() => {
     startJob();
     fetchLyrics();
@@ -108,14 +99,9 @@ export default function SongClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ── Reset pitch display when song changes ────────────────────────────────
-  useEffect(() => { setPitch(0); }, [videoId]);
-
   async function startJob() {
     try {
-      const endpoint = direct
-        ? `/api/direct/${videoId}`
-        : `/api/process/${videoId}`;
+      const endpoint = direct ? `/api/direct/${videoId}` : `/api/process/${videoId}`;
       const res = await fetch(endpoint, { method: "POST" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
@@ -149,7 +135,7 @@ export default function SongClient() {
           clearPolling();
           setJobError(job.error ?? "Erro desconhecido.");
         }
-      } catch { /* network hiccup, keep polling */ }
+      } catch { /* keep polling */ }
     }, 2500);
   }
 
@@ -165,8 +151,8 @@ export default function SongClient() {
       const res = await fetch(`/api/lyrics?${q}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.lrc)    setLrcLines(parseLrc(data.lrc));
-        else             setLyrics(data.lyrics || null);
+        if (data.lrc)  setLrcLines(parseLrc(data.lrc));
+        else           setLyrics(data.lyrics || null);
       }
     } catch { /* ignore */ }
     setLyricsLoading(false);
@@ -184,12 +170,10 @@ export default function SongClient() {
     setYtKaraokesDone(true);
   }
 
-  function useYouTubeKaraoke(song: YtKaraoke) {
+  function goDirectKaraoke(song: YtKaraoke) {
     const p = new URLSearchParams({
-      title:     song.title,
-      channel:   song.channel,
-      thumbnail: song.thumbnail,
-      direct:    "1",
+      title: song.title, channel: song.channel,
+      thumbnail: song.thumbnail, direct: "1",
     });
     router.push(`/song/${song.id}?${p}`);
   }
@@ -197,16 +181,14 @@ export default function SongClient() {
   // ── Register track in global player when ready ────────────────────────────
   useEffect(() => {
     if (!ready || !karaokeUrl) return;
-    // Only call setTrack if this is a different song (avoid resetting position)
     if (player.track?.id !== videoId) {
       player.setTrack({ id: videoId, title, channel, thumbnail }, karaokeUrl);
     }
-    if (originalRef.current && !direct)
-      originalRef.current.src = `/api/original/${videoId}`;
+    if (!direct) player.setOriginalTrack(`/api/original/${videoId}`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, karaokeUrl]);
 
-  // ── Lyrics active line ────────────────────────────────────────────────────
+  // ── Lyrics active line ─────────────────────────────────────────────────────
   const activeLineIdx = useMemo(() => {
     if (!lrcLines.length) return -1;
     let idx = -1;
@@ -218,64 +200,17 @@ export default function SongClient() {
   }, [lrcLines, player.currentTime]);
 
   useEffect(() => {
-    if (activeLineIdx >= 0 && lineRefs.current[activeLineIdx]) {
-      lineRefs.current[activeLineIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
-    }
+    lineRefs.current[activeLineIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [activeLineIdx]);
-
-  // ── Player controls ───────────────────────────────────────────────────────
-  const togglePlay = useCallback(() => {
-    if (player.playing) {
-      player.pause();
-      originalRef.current?.pause();
-    } else {
-      const t = player.currentTime;
-      if (originalRef.current) originalRef.current.currentTime = t;
-      player.play();
-      if (!direct) originalRef.current?.play().catch(() => {});
-    }
-  }, [player, direct]);
-
-  // ── Pitch shift ───────────────────────────────────────────────────────────
-  const applyPitch = useCallback(async (semitones: number) => {
-    setPitch(semitones);
-    // Karaoke track: managed by global context (one init per audio element)
-    await player.applyPitch(semitones);
-    // Original track: local init per song page mount
-    if (!direct) {
-      if (!originalPSRef.current && originalRef.current) {
-        try {
-          const { PitchShift, getContext, start, connect } = await import("tone");
-          await start();
-          const rawCtx = getContext().rawContext as AudioContext;
-          const src = rawCtx.createMediaElementSource(originalRef.current);
-          const ps  = new PitchShift(semitones);
-          ps.toDestination();
-          connect(src, ps);
-          originalPSRef.current = ps;
-        } catch { /* ignore */ }
-      } else if (originalPSRef.current) {
-        originalPSRef.current.pitch = semitones;
-      }
-    }
-  }, [player, direct]);
-
-  useEffect(() => {
-    return () => { originalPSRef.current?.dispose(); };
-  }, []);
-
-  function handleShare() { setShareModalOpen(true); }
 
   async function copyLink() {
     const url = window.location.href;
-    try {
-      await navigator.clipboard.writeText(url);
-    } catch {
+    try { await navigator.clipboard.writeText(url); }
+    catch {
       const ta = document.createElement("textarea");
       ta.value = url;
       ta.style.cssText = "position:fixed;top:-9999px;left:-9999px";
-      document.body.appendChild(ta);
-      ta.select();
+      document.body.appendChild(ta); ta.select();
       document.execCommand("copy");
       document.body.removeChild(ta);
     }
@@ -283,16 +218,7 @@ export default function SongClient() {
     setTimeout(() => setCopied(false), 2000);
   }
 
-  function switchMode(toKaraoke: boolean) {
-    if (toKaraoke === karaokeMode) return;
-    const t = player.currentTime;
-    if (originalRef.current) originalRef.current.currentTime = t;
-    if (player.audioRef.current) player.audioRef.current.muted = !toKaraoke;
-    if (originalRef.current)     originalRef.current.muted    =  toKaraoke;
-    setKaraokeMode(toKaraoke);
-  }
-
-  // ── Error screen ──────────────────────────────────────────────────────────
+  // ── Error ─────────────────────────────────────────────────────────────────
   if (jobError) {
     return (
       <div className={styles.errorPage}>
@@ -350,11 +276,7 @@ export default function SongClient() {
                 <span className={styles.ytKaraokeTag}>Instantâneo</span>
               </div>
               {ytKaraokes.map(song => (
-                <button
-                  key={song.id}
-                  className={styles.ytKaraokeItem}
-                  onClick={() => useYouTubeKaraoke(song)}
-                >
+                <button key={song.id} className={styles.ytKaraokeItem} onClick={() => goDirectKaraoke(song)}>
                   <div className={styles.ytKaraokeThumb}>
                     <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="48px" />
                   </div>
@@ -365,9 +287,7 @@ export default function SongClient() {
                   <span className={styles.ytKaraokePlay}>▶ Usar este</span>
                 </button>
               ))}
-              <p className={styles.ytKaraokeNote}>
-                Ou aguarde o processamento com IA para melhor qualidade
-              </p>
+              <p className={styles.ytKaraokeNote}>Ou aguarde o processamento com IA para melhor qualidade</p>
             </div>
           )}
         </div>
@@ -375,7 +295,7 @@ export default function SongClient() {
     );
   }
 
-  // ── Song page (ready) ─────────────────────────────────────────────────────
+  // ── Player page (ready) ───────────────────────────────────────────────────
   return (
     <div className={styles.songPage}>
       <div className={styles.topBar}>
@@ -385,7 +305,7 @@ export default function SongClient() {
           </svg>
           Voltar
         </button>
-        <button className={styles.shareBtn} onClick={handleShare}>
+        <button className={styles.shareBtn} onClick={() => setShareModalOpen(true)}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" />
             <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
@@ -395,9 +315,8 @@ export default function SongClient() {
       </div>
 
       <div className={styles.splitLayout}>
-        {/* ── LEFT: Player ───────────────────────────────────────────── */}
+        {/* ── LEFT: Song info ──────────────────────────────────────────── */}
         <div className={styles.playerPanel}>
-
           <div className={styles.songInfo}>
             <div className={styles.songThumb}>
               <Image src={thumbnail} alt={title} fill unoptimized />
@@ -408,91 +327,13 @@ export default function SongClient() {
             </div>
           </div>
 
-          {direct && (
-            <div className={styles.ytBadge}>
-              🎬 Karaokê do YouTube
-            </div>
-          )}
-
-          {/* Original audio for voice toggle (local only) */}
-          {!direct && <audio ref={originalRef} muted preload="auto" />}
-
-          <div className={styles.controls}>
-            <button
-              className={styles.playBtn}
-              onClick={togglePlay}
-              aria-label={player.playing ? "Pausar" : "Reproduzir"}
-              disabled={player.audioLoading}
-            >
-              {player.audioLoading ? (
-                <span className={styles.spinner} aria-hidden />
-              ) : player.playing ? (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <rect x="6" y="4" width="4" height="16" rx="1" />
-                  <rect x="14" y="4" width="4" height="16" rx="1" />
-                </svg>
-              ) : (
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor">
-                  <polygon points="5,3 19,12 5,21" />
-                </svg>
-              )}
-            </button>
-          </div>
-
-          {!direct && (
-            <>
-              <div className={styles.switchRow}>
-                <span className={`${styles.switchLabel} ${!karaokeMode ? styles.switchLabelActive : ""}`}>
-                  Original
-                </span>
-                <button
-                  className={`${styles.switchTrack} ${karaokeMode ? styles.switchOn : ""}`}
-                  onClick={() => switchMode(!karaokeMode)}
-                  aria-label="Alternar entre original e karaokê"
-                  role="switch"
-                  aria-checked={karaokeMode}
-                >
-                  <span className={styles.switchThumb} />
-                </button>
-                <span className={`${styles.switchLabel} ${karaokeMode ? styles.switchLabelActive : ""}`}>
-                  🎤 Karaokê
-                </span>
-              </div>
-              <p className={styles.switchHint}>
-                {karaokeMode ? "Sem vocais — cante você!" : "Versão original com vocais"}
-              </p>
-            </>
-          )}
-
-          <div className={styles.pitchRow}>
-            <span className={styles.pitchLabel}>Tom</span>
-            <button
-              className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}
-              aria-label="Diminuir meio semitom"
-              title="Diminuir tom (♭)"
-            >♭</button>
-            <span className={styles.pitchDisplay}>
-              {pitch === 0 ? "0" : `${pitch > 0 ? "+" : ""}${Number.isInteger(pitch) ? pitch : pitch.toFixed(1)}`}
-              <span className={styles.pitchUnit}>st</span>
-            </span>
-            <button
-              className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.min(12, pitch + 0.5))}
-              aria-label="Aumentar meio semitom"
-              title="Aumentar tom (♯)"
-            >♯</button>
-          </div>
+          {direct && <div className={styles.ytBadge}>🎬 Karaokê do YouTube</div>}
 
           {!direct && ytKaraokes.length > 0 && (
             <div className={styles.ytAltBox}>
               <p className={styles.ytAltHeader}>🎬 Karaokês prontos no YouTube</p>
               {ytKaraokes.map(song => (
-                <button
-                  key={song.id}
-                  className={styles.ytAltItem}
-                  onClick={() => useYouTubeKaraoke(song)}
-                >
+                <button key={song.id} className={styles.ytAltItem} onClick={() => goDirectKaraoke(song)}>
                   <div className={styles.ytAltThumb}>
                     <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="44px" />
                   </div>
@@ -507,7 +348,7 @@ export default function SongClient() {
           )}
         </div>
 
-        {/* ── RIGHT: Lyrics ───────────────────────────────────────────── */}
+        {/* ── RIGHT: Lyrics ────────────────────────────────────────────── */}
         <div className={styles.lyricsPanel}>
           <h2 className={styles.lyricsHeading}>Letra</h2>
           {lyricsLoading ? (
@@ -539,52 +380,7 @@ export default function SongClient() {
         </div>
       </div>
 
-      {/* ── Mini player — mobile only, fixed at bottom ─────────────── */}
-      <div className={styles.miniPlayer}>
-        <div className={styles.miniLeft}>
-          <div className={styles.miniThumb}>
-            <Image src={thumbnail} alt={title} fill unoptimized />
-          </div>
-          <p className={styles.miniTitle}>{title}</p>
-        </div>
-
-        <div className={styles.miniControls}>
-          <div className={styles.miniPitch}>
-            <button className={styles.miniPitchBtn} onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}>♭</button>
-            <span className={styles.miniPitchVal}>
-              {pitch === 0 ? "0" : `${pitch > 0 ? "+" : ""}${Number.isInteger(pitch) ? pitch : pitch.toFixed(1)}`}
-            </span>
-            <button className={styles.miniPitchBtn} onClick={() => applyPitch(Math.min(12, pitch + 0.5))}>♯</button>
-          </div>
-
-          <button className={styles.miniPlayBtn} onClick={togglePlay} disabled={player.audioLoading} aria-label={player.playing ? "Pausar" : "Reproduzir"}>
-            {player.audioLoading ? (
-              <span className={styles.miniSpinner} aria-hidden />
-            ) : player.playing ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5,3 19,12 5,21" />
-              </svg>
-            )}
-          </button>
-
-          {!direct && (
-            <button
-              className={`${styles.miniMode} ${karaokeMode ? styles.miniModeActive : ""}`}
-              onClick={() => switchMode(!karaokeMode)}
-              title={karaokeMode ? "Karaokê ativo" : "Original ativo"}
-            >
-              {karaokeMode ? "🎤" : "🎵"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* ── Share modal ──────────────────────────────────────────────── */}
+      {/* ── Share modal ───────────────────────────────────────────────── */}
       {shareModalOpen && (
         <div className={styles.modalOverlay} onClick={() => setShareModalOpen(false)}>
           <div className={styles.modalBox} onClick={e => e.stopPropagation()}>
@@ -619,7 +415,6 @@ export default function SongClient() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -11,8 +11,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   const { track } = usePlayer();
 
   const isHome    = pathname === "/";
-  const isSong    = pathname.startsWith("/song/");
-  const hasPlayer = !!track && !isSong;
+  const hasPlayer = !!track;
 
   return (
     <>
