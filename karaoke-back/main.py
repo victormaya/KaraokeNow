@@ -457,16 +457,40 @@ async def get_lyrics(artist: str = "", title: str = ""):
                         return JSONResponse({"lrc": lrc, "lyrics": lyrics})
 
             # 3. lyrics.ovh — larger database, plain text only
-            if artist.strip() and title.strip():
-                ovh_url = f"https://api.lyrics.ovh/v1/{quote(artist.strip())}/{quote(title.strip())}"
+            async def _try_ovh(a: str, t: str) -> str | None:
+                if not a or not t:
+                    return None
                 try:
-                    ovh = await client.get(ovh_url, timeout=8)
-                    if ovh.status_code == 200:
-                        plain = ovh.json().get("lyrics") or None
-                        if plain:
-                            return JSONResponse({"lrc": None, "lyrics": plain})
+                    r = await client.get(
+                        f"https://api.lyrics.ovh/v1/{quote(a)}/{quote(t)}",
+                        timeout=8,
+                    )
+                    if r.status_code == 200:
+                        return r.json().get("lyrics") or None
                 except Exception:
                     pass
+                return None
+
+            art = artist.strip()
+            tit = title.strip()
+
+            # 3a. artist + title as-is
+            if art and tit:
+                plain = await _try_ovh(art, tit)
+                if plain:
+                    return JSONResponse({"lrc": None, "lyrics": plain})
+
+            # 3b. artist empty — try splitting the title (e.g. "Marilia Mendonca Infiel")
+            if not art and tit:
+                words = tit.split()
+                for split_at in (2, 1, 3):
+                    if len(words) > split_at:
+                        plain = await _try_ovh(
+                            " ".join(words[:split_at]),
+                            " ".join(words[split_at:]),
+                        )
+                        if plain:
+                            return JSONResponse({"lrc": None, "lyrics": plain})
     except Exception:
         pass
     return JSONResponse({"lrc": None, "lyrics": None})
