@@ -8,7 +8,7 @@ import { usePlayer } from "@/context/PlayerContext";
 import styles from "./page.module.css";
 
 interface LrcLine { time: number; text: string; }
-interface YtKaraoke { id: string; title: string; channel: string; thumbnail: string; }
+interface RelatedSong { id: string; title: string; channel: string; thumbnail: string; duration: string; }
 
 function parseLrc(lrc: string): LrcLine[] {
   const re = /\[(\d{2}):(\d{2})\.(\d{2,3})\](.*)/;
@@ -63,9 +63,8 @@ export default function SongClient() {
   const [isFirstTime, setIsFirstTime] = useState(false);
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ── YouTube karaoke suggestions ───────────────────────────────────────────
-  const [ytKaraokes,     setYtKaraokes]     = useState<YtKaraoke[]>([]);
-  const [ytKaraokesDone, setYtKaraokesDone] = useState(false);
+  // ── Related songs ─────────────────────────────────────────────────────────
+  const [relatedSongs, setRelatedSongs] = useState<RelatedSong[]>([]);
 
   // ── Lyrics ────────────────────────────────────────────────────────────────
   const [lrcLines,      setLrcLines]      = useState<LrcLine[]>([]);
@@ -94,7 +93,7 @@ export default function SongClient() {
   useEffect(() => {
     startJob();
     fetchLyrics();
-    if (!direct) fetchYtKaraokes();
+    fetchRelatedSongs();
     return () => clearPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -158,22 +157,25 @@ export default function SongClient() {
     setLyricsLoading(false);
   }
 
-  async function fetchYtKaraokes() {
-    if (!title) { setYtKaraokesDone(true); return; }
+  async function fetchRelatedSongs() {
+    const { artist } = parseSongMeta(title);
+    const q = artist || title;
+    if (!q) return;
     try {
-      const res = await fetch(`/api/karaoke-search?q=${encodeURIComponent(title)}`);
+      const res = await fetch(`/api/search?q=${encodeURIComponent(q)}&limit=8`);
       if (res.ok) {
         const data = await res.json();
-        setYtKaraokes(data.results ?? []);
+        const results: RelatedSong[] = (data.results ?? []).filter(
+          (s: RelatedSong) => s.id !== videoId
+        ).slice(0, 6);
+        setRelatedSongs(results);
       }
     } catch { /* ignore */ }
-    setYtKaraokesDone(true);
   }
 
-  function goDirectKaraoke(song: YtKaraoke) {
+  function goToSong(song: RelatedSong) {
     const p = new URLSearchParams({
-      title: song.title, channel: song.channel,
-      thumbnail: song.thumbnail, direct: "1",
+      title: song.title, channel: song.channel, thumbnail: song.thumbnail,
     });
     router.push(`/song/${song.id}?${p}`);
   }
@@ -268,15 +270,14 @@ export default function SongClient() {
             </>
           )}
 
-          {!direct && ytKaraokesDone && ytKaraokes.length > 0 && (
+          {relatedSongs.length > 0 && (
             <div className={styles.ytKaraokeBox}>
               <div className={styles.ytKaraokeHeader}>
-                <span>🎬</span>
-                <span>Karaokês prontos no YouTube</span>
-                <span className={styles.ytKaraokeTag}>Instantâneo</span>
+                <span>🎵</span>
+                <span>Músicas relacionadas</span>
               </div>
-              {ytKaraokes.map(song => (
-                <button key={song.id} className={styles.ytKaraokeItem} onClick={() => goDirectKaraoke(song)}>
+              {relatedSongs.map(song => (
+                <button key={song.id} className={styles.ytKaraokeItem} onClick={() => goToSong(song)}>
                   <div className={styles.ytKaraokeThumb}>
                     <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="48px" />
                   </div>
@@ -284,10 +285,9 @@ export default function SongClient() {
                     <span className={styles.ytKaraokeTitle}>{song.title}</span>
                     <span className={styles.ytKaraokeChannel}>{song.channel}</span>
                   </div>
-                  <span className={styles.ytKaraokePlay}>▶ Usar este</span>
+                  <span className={styles.ytKaraokePlay}>▶</span>
                 </button>
               ))}
-              <p className={styles.ytKaraokeNote}>Ou aguarde o processamento com IA para melhor qualidade</p>
             </div>
           )}
         </div>
@@ -329,11 +329,11 @@ export default function SongClient() {
 
           {direct && <div className={styles.ytBadge}>🎬 Karaokê do YouTube</div>}
 
-          {!direct && ytKaraokes.length > 0 && (
+          {relatedSongs.length > 0 && (
             <div className={styles.ytAltBox}>
-              <p className={styles.ytAltHeader}>🎬 Karaokês prontos no YouTube</p>
-              {ytKaraokes.map(song => (
-                <button key={song.id} className={styles.ytAltItem} onClick={() => goDirectKaraoke(song)}>
+              <p className={styles.ytAltHeader}>🎵 Músicas relacionadas</p>
+              {relatedSongs.map(song => (
+                <button key={song.id} className={styles.ytAltItem} onClick={() => goToSong(song)}>
                   <div className={styles.ytAltThumb}>
                     <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="44px" />
                   </div>
