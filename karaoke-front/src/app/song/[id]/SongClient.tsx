@@ -377,7 +377,25 @@ export default function SongClient() {
           ) : lyrics ? (
             <pre className={styles.lyricsText}>{lyrics}</pre>
           ) : (
-            <p className={styles.lyricsEmpty}>Letra não encontrada para esta música.</p>
+            <div className={styles.lyricsEmpty}>
+              <p>Letra não encontrada automaticamente.</p>
+              <a
+                className={styles.lyricsSearchLink}
+                href={`https://www.letras.mus.br/pesquisar/?q=${encodeURIComponent(title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Buscar no Letras.mus.br →
+              </a>
+              <a
+                className={styles.lyricsSearchLink}
+                href={`https://www.google.com/search?q=${encodeURIComponent(title + " letra")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Buscar no Google →
+              </a>
+            </div>
           )}
         </div>
       </div>

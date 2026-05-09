@@ -519,7 +519,20 @@
   font-size: 0.88rem;
   color: var(--text-muted);
   font-style: italic;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
+.lyricsSearchLink {
+  display: inline-block;
+  font-size: 0.82rem;
+  font-style: normal;
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+.lyricsSearchLink:hover { text-decoration: underline; }
 
 /* ─── Mini player (mobile only, fixed at bottom) ────────────────────────── */
 

@@ -504,6 +504,31 @@ async def get_lyrics(artist: str = "", title: str = ""):
                         )
                         if plain:
                             return JSONResponse({"lrc": None, "lyrics": plain})
+
+            # 4. textyl.co — returns synced lines, free, no auth
+            q_textyl = f"{art} {tit}".strip() if art else tit
+            if q_textyl:
+                try:
+                    tr = await client.get(
+                        f"https://api.textyl.co/api/lyrics?q={quote(q_textyl)}",
+                        timeout=8,
+                    )
+                    if tr.status_code == 200:
+                        lines = tr.json()
+                        if isinstance(lines, list) and lines:
+                            def _sec_to_lrc(s: float) -> str:
+                                m2 = int(s) // 60
+                                s2 = s - m2 * 60
+                                return f"[{m2:02d}:{s2:05.2f}]"
+                            lrc_lines = "\n".join(
+                                f"{_sec_to_lrc(ln['seconds'])}{ln['lyrics']}"
+                                for ln in lines
+                                if "seconds" in ln and "lyrics" in ln
+                            )
+                            if lrc_lines:
+                                return JSONResponse({"lrc": lrc_lines, "lyrics": None})
+                except Exception:
+                    pass
     except Exception:
         pass
     return JSONResponse({"lrc": None, "lyrics": None})
