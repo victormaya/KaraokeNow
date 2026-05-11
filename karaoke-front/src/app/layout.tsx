@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
 
-const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://karaokenow.com.br";
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://vokao.com.br";
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -13,8 +13,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "KaraokeNow — Karaokê Instantâneo do YouTube",
-    template: "%s | KaraokeNow",
+    default: "Vokao — Karaokê Instantâneo do YouTube",
+    template: "%s | Vokao",
   },
   description:
     "Busque qualquer música do YouTube, remova os vocais com IA em segundos e cante como nunca. Grátis, sem download, sem cadastro.",
@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     "karaoke MPB",
     "karaoke rap",
   ],
-  authors:   [{ name: "KaraokeNow" }],
-  creator:   "KaraokeNow",
-  publisher: "KaraokeNow",
+  authors:   [{ name: "Vokao" }],
+  creator:   "Vokao",
+  publisher: "Vokao",
   robots: {
     index:  true,
     follow: true,
@@ -53,26 +53,26 @@ export const metadata: Metadata = {
     type:        "website",
     locale:      "pt_BR",
     url:         BASE_URL,
-    siteName:    "KaraokeNow",
-    title:       "KaraokeNow — Karaokê Instantâneo do YouTube",
+    siteName:    "Vokao",
+    title:       "Vokao — Karaokê Instantâneo do YouTube",
     description: "Busque qualquer música, remova os vocais com IA e cante. Grátis, sem download, sem cadastro.",
     images: [
       {
         url:    "/opengraph-image",
         width:  1200,
         height: 630,
-        alt:    "KaraokeNow — Karaokê Instantâneo do YouTube",
+        alt:    "Vokao — Karaokê Instantâneo do YouTube",
         type:   "image/png",
       },
     ],
   },
   twitter: {
     card:        "summary_large_image",
-    title:       "KaraokeNow — Karaokê Instantâneo do YouTube",
+    title:       "Vokao — Karaokê Instantâneo do YouTube",
     description: "Karaokê instantâneo do YouTube com remoção de vocais por IA. Grátis!",
     images:      ["/opengraph-image"],
-    creator:     "@karaokenow",
-    site:        "@karaokenow",
+    creator:     "@vokao",
+    site:        "@vokao",
   },
   alternates: {
     canonical: BASE_URL,
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type":    "WebSite",
-  name:        "KaraokeNow",
+  name:        "Vokao",
   url:         BASE_URL,
   description: "Karaokê instantâneo do YouTube com remoção de vocais por IA",
   potentialAction: {

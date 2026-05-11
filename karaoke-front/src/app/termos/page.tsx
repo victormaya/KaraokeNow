@@ -5,14 +5,14 @@ import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "Termos de Uso",
-  description: "Termos de Uso do KaraokeNow — condições para utilização do serviço.",
+  description: "Termos de Uso do Vokao — condições para utilização do serviço.",
 };
 
 export default function TermosPage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <Link href="/" className={styles.back}>← Voltar ao KaraokeNow</Link>
+        <Link href="/" className={styles.back}>← Voltar ao Vokao</Link>
 
         <h1 className={styles.title}>Termos de Uso</h1>
         <p className={styles.updated}>Última atualização: maio de 2025</p>
@@ -20,7 +20,7 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>1. Aceitação</h2>
           <p>
-            Ao acessar e utilizar o <strong>KaraokeNow</strong>, você concorda com estes Termos de Uso.
+            Ao acessar e utilizar o <strong>Vokao</strong>, você concorda com estes Termos de Uso.
             Se não concordar com alguma condição, por favor, não utilize o serviço.
           </p>
         </section>
@@ -28,7 +28,7 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>2. Descrição do serviço</h2>
           <p>
-            O KaraokeNow é uma ferramenta que permite buscar vídeos no YouTube, remover os vocais do áudio
+            O Vokao é uma ferramenta que permite buscar vídeos no YouTube, remover os vocais do áudio
             usando inteligência artificial e exibir a letra sincronizada, possibilitando a prática de karaokê
             de forma gratuita e sem necessidade de cadastro.
           </p>
@@ -58,8 +58,8 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>5. Propriedade intelectual e conteúdo do YouTube</h2>
           <p>
-            Todo o conteúdo de áudio processado pelo KaraokeNow é originado do YouTube e pertence aos seus
-            respectivos detentores de direitos autorais. O KaraokeNow não reivindica propriedade sobre esse
+            Todo o conteúdo de áudio processado pelo Vokao é originado do YouTube e pertence aos seus
+            respectivos detentores de direitos autorais. O Vokao não reivindica propriedade sobre esse
             conteúdo e não o distribui comercialmente.
           </p>
           <p>
@@ -79,7 +79,7 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>6. Disponibilidade do serviço</h2>
           <p>
-            O KaraokeNow é oferecido <strong>gratuitamente e sem garantias de disponibilidade contínua</strong>.
+            O Vokao é oferecido <strong>gratuitamente e sem garantias de disponibilidade contínua</strong>.
             O serviço pode ser interrompido, modificado ou encerrado a qualquer momento sem aviso prévio.
           </p>
         </section>
@@ -87,7 +87,7 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>7. Isenção de responsabilidade</h2>
           <p>
-            O KaraokeNow é fornecido "no estado em que se encontra", sem garantias de qualquer tipo.
+            O Vokao é fornecido "no estado em que se encontra", sem garantias de qualquer tipo.
             O operador não se responsabiliza por danos diretos ou indiretos decorrentes do uso ou
             impossibilidade de uso do serviço, falhas de processamento, indisponibilidade de conteúdo no
             YouTube ou qualquer outro fator fora de seu controle.

@@ -48,7 +48,7 @@ export default function OGImage() {
           display: "flex",
         }}
       >
-        KaraokeNow
+        Vokao
       </div>
 
       {/* Tagline */}

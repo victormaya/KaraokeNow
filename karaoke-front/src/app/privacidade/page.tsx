@@ -5,14 +5,14 @@ import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "Política de Privacidade",
-  description: "Política de Privacidade do KaraokeNow — como coletamos, usamos e protegemos seus dados.",
+  description: "Política de Privacidade do Vokao — como coletamos, usamos e protegemos seus dados.",
 };
 
 export default function PrivacidadePage() {
   return (
     <div className={styles.page}>
       <div className={styles.container}>
-        <Link href="/" className={styles.back}>← Voltar ao KaraokeNow</Link>
+        <Link href="/" className={styles.back}>← Voltar ao Vokao</Link>
 
         <h1 className={styles.title}>Política de Privacidade</h1>
         <p className={styles.updated}>Última atualização: maio de 2025</p>
@@ -20,7 +20,7 @@ export default function PrivacidadePage() {
         <section className={styles.section}>
           <h2>1. Quem somos</h2>
           <p>
-            O <strong>KaraokeNow</strong> é um serviço online de karaokê que remove vocais de músicas do YouTube
+            O <strong>Vokao</strong> é um serviço online de karaokê que remove vocais de músicas do YouTube
             em tempo real, operado por <strong>Victor Maya</strong>. Para dúvidas sobre privacidade, entre em
             contato pelo e-mail <a href="mailto:victor.maya42@gmail.com">victor.maya42@gmail.com</a>.
           </p>
@@ -28,7 +28,7 @@ export default function PrivacidadePage() {
 
         <section className={styles.section}>
           <h2>2. Dados que coletamos</h2>
-          <p>O KaraokeNow não exige cadastro nem login. Os únicos dados tratados são:</p>
+          <p>O Vokao não exige cadastro nem login. Os únicos dados tratados são:</p>
           <ul>
             <li><strong>Endereço IP:</strong> registrado automaticamente nos logs do servidor a cada requisição, como ocorre em qualquer site.</li>
             <li><strong>Termos de busca:</strong> as consultas que você digita na busca são enviadas ao nosso servidor para pesquisar vídeos no YouTube. Não são armazenadas de forma permanente.</li>
@@ -52,7 +52,7 @@ export default function PrivacidadePage() {
 
         <section className={styles.section}>
           <h2>4. Compartilhamento com terceiros</h2>
-          <p>Para funcionar, o KaraokeNow utiliza os seguintes serviços de terceiros:</p>
+          <p>Para funcionar, o Vokao utiliza os seguintes serviços de terceiros:</p>
           <ul>
             <li>
               <strong>Replicate (EUA):</strong> o áudio baixado do YouTube é enviado à plataforma Replicate para
@@ -113,7 +113,7 @@ export default function PrivacidadePage() {
         <section className={styles.section}>
           <h2>8. Cookies e rastreamento</h2>
           <p>
-            O KaraokeNow <strong>não utiliza cookies de rastreamento</strong>, ferramentas de análise de
+            O Vokao <strong>não utiliza cookies de rastreamento</strong>, ferramentas de análise de
             comportamento (como Google Analytics) nem publicidade personalizada. O único armazenamento local
             utilizado é o necessário para o funcionamento do próprio navegador (cache de rede).
           </p>

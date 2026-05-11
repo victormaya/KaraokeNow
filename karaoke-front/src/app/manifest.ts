@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name:             "KaraokeNow",
-    short_name:       "KaraokeNow",
+    name:             "Vokao",
+    short_name:       "Vokao",
     description:      "Karaokê instantâneo do YouTube com remoção de vocais por IA",
     start_url:        "/",
     display:          "standalone",

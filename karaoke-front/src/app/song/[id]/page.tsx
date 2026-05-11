@@ -13,7 +13,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const channel = sp.channel ? decodeURIComponent(sp.channel) : "";
   const thumb   = sp.thumbnail ?? null;
 
-  const desc = `Cante "${title}"${channel ? ` de ${channel}` : ""} no KaraokeNow. Vocais removidos com IA — grátis e instantâneo!`;
+  const desc = `Cante "${title}"${channel ? ` de ${channel}` : ""} no Vokao. Vocais removidos com IA — grátis e instantâneo!`;
 
   return {
     title,
