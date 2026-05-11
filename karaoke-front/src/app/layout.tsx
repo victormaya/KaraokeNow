@@ -13,8 +13,8 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
   title: {
-    default: "Vokao — Karaokê Instantâneo do YouTube",
-    template: "%s | Vokao",
+    default: "VOKAO — Karaokê Instantâneo do YouTube",
+    template: "%s | VOKAO",
   },
   description:
     "Busque qualquer música do YouTube, remova os vocais com IA em segundos e cante como nunca. Grátis, sem download, sem cadastro.",
@@ -35,9 +35,9 @@ export const metadata: Metadata = {
     "karaoke MPB",
     "karaoke rap",
   ],
-  authors:   [{ name: "Vokao" }],
-  creator:   "Vokao",
-  publisher: "Vokao",
+  authors:   [{ name: "VOKAO" }],
+  creator:   "VOKAO",
+  publisher: "VOKAO",
   robots: {
     index:  true,
     follow: true,
@@ -53,22 +53,22 @@ export const metadata: Metadata = {
     type:        "website",
     locale:      "pt_BR",
     url:         BASE_URL,
-    siteName:    "Vokao",
-    title:       "Vokao — Karaokê Instantâneo do YouTube",
+    siteName:    "VOKAO",
+    title:       "VOKAO — Karaokê Instantâneo do YouTube",
     description: "Busque qualquer música, remova os vocais com IA e cante. Grátis, sem download, sem cadastro.",
     images: [
       {
         url:    "/opengraph-image",
         width:  1200,
         height: 630,
-        alt:    "Vokao — Karaokê Instantâneo do YouTube",
+        alt:    "VOKAO — Karaokê Instantâneo do YouTube",
         type:   "image/png",
       },
     ],
   },
   twitter: {
     card:        "summary_large_image",
-    title:       "Vokao — Karaokê Instantâneo do YouTube",
+    title:       "VOKAO — Karaokê Instantâneo do YouTube",
     description: "Karaokê instantâneo do YouTube com remoção de vocais por IA. Grátis!",
     images:      ["/opengraph-image"],
     creator:     "@vokao",
@@ -87,7 +87,7 @@ export const metadata: Metadata = {
 const jsonLd = {
   "@context": "https://schema.org",
   "@type":    "WebSite",
-  name:        "Vokao",
+  name:        "VOKAO",
   url:         BASE_URL,
   description: "Karaokê instantâneo do YouTube com remoção de vocais por IA",
   potentialAction: {

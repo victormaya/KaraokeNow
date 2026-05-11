@@ -4,7 +4,7 @@ import styles from "./Footer.module.css";
 export default function Footer() {
   return (
     <footer className={styles.footer}>
-      <span>© {new Date().getFullYear()} Vokao</span>
+      <span>© {new Date().getFullYear()} VOKAO</span>
       <span className={styles.dot}>·</span>
       <span>
         Criado por{" "}

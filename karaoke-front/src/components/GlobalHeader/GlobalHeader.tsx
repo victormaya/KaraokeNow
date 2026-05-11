@@ -19,7 +19,7 @@ export default function GlobalHeader() {
   return (
     <header className={styles.header}>
       <button className={styles.logo} onClick={() => router.push("/")}>
-        🎤 <span>Vokao</span>
+        🎤 <span>VOKAO</span>
       </button>
       <form className={styles.form} onSubmit={handleSubmit}>
         <input

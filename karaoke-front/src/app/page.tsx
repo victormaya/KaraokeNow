@@ -124,7 +124,7 @@ function HomeContent() {
         <div className={styles.heroBg} aria-hidden />
         <div className={styles.logo}>
           <div className={styles.logoIcon}>🎤</div>
-          <span className={styles.logoText}>Vokao</span>
+          <span className={styles.logoText}>VOKAO</span>
         </div>
         <p className={styles.tagline}>
           Busque qualquer música do YouTube e remova os vocais instantaneamente.
