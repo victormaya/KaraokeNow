@@ -552,6 +552,7 @@ GENRE_IDS: dict[str, Optional[int]] = {
     "forro":     1223,
     "rap":       18,
     "mpb":       1225,
+    "gospel":    22,
 }
 
 # Per-genre cache: genre_key -> {"data": list, "ts": float}

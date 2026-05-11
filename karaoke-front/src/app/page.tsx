@@ -19,6 +19,7 @@ const GENRE_TABS = [
   { id: "forro",     label: "Forró",      emoji: "🪗"  },
   { id: "rap",       label: "Rap",        emoji: "🎙️"  },
   { id: "mpb",       label: "MPB",        emoji: "🎵"  },
+  { id: "gospel",    label: "Gospel",     emoji: "✝️"  },
 ] as const;
 
 type TabId = typeof GENRE_TABS[number]["id"];
