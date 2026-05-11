@@ -79,6 +79,9 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   category: "entertainment",
+  verification: {
+    google: "wyz7Zcf-lsxTtrQnBCsTY0hnnlTyAT_Qkl-6L-WI0zQ",
+  },
 };
 
 const jsonLd = {
