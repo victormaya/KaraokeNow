@@ -374,6 +374,16 @@ async def get_job(job_id: str):
     )
 
 
+@app.get("/api/processed")
+async def check_processed(ids: str = ""):
+    """Return which video IDs already have AI-processed instrumental cached."""
+    if not ids:
+        return JSONResponse({"processed": []})
+    video_ids = [v.strip() for v in ids.split(",") if v.strip()]
+    processed = [vid for vid in video_ids if (CACHE_DIR / vid / "instrumental.mp3").exists()]
+    return JSONResponse({"processed": processed})
+
+
 @app.get("/api/audio/{job_id}")
 async def stream_audio(job_id: str):
     """Return the processed instrumental as an audio file."""

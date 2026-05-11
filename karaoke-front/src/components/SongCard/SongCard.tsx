@@ -7,9 +7,10 @@ import styles from "./SongCard.module.css";
 
 interface Props {
   song: Song;
+  processed?: boolean;
 }
 
-export default function SongCard({ song }: Props) {
+export default function SongCard({ song, processed }: Props) {
   const router = useRouter();
 
   function handleClick() {
@@ -41,6 +42,9 @@ export default function SongCard({ song }: Props) {
           unoptimized
         />
         <span className={styles.duration}>{song.duration}</span>
+        {processed && (
+          <span className={styles.processedBadge} title="Karaokê já processado — sem espera!">✨ Pronto</span>
+        )}
         <div className={styles.playIcon} aria-hidden>
           <svg width="44" height="44" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.55)" />

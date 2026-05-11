@@ -1,3 +1,6 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import type { Song } from "@/types";
 import SongCard from "@/components/SongCard/SongCard";
 import styles from "./SongGrid.module.css";
@@ -18,6 +21,17 @@ function SkeletonCard() {
 }
 
 export default function SongGrid({ songs, loading }: Props) {
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!songs.length) return;
+    const ids = songs.map(s => s.id).join(",");
+    fetch(`/api/processed?ids=${ids}`)
+      .then(r => r.ok ? r.json() : { processed: [] })
+      .then(data => setProcessedIds(new Set(data.processed ?? [])))
+      .catch(() => {});
+  }, [songs]);
+
   return (
     <section className={styles.section}>
       {songs.length > 0 && !loading && (
@@ -28,7 +42,7 @@ export default function SongGrid({ songs, loading }: Props) {
           ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
           : songs.map((song) => (
               <div key={song.id} role="listitem">
-                <SongCard song={song} />
+                <SongCard song={song} processed={processedIds.has(song.id)} />
               </div>
             ))}
       </div>
