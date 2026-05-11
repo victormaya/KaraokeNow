@@ -1,0 +1,23 @@
+# Dependencies
+karaoke-front/node_modules/
+karaoke-front/.next/
+
+# Cache e arquivos gerados
+karaoke-back/__pycache__/
+karaoke-back/*.pyc
+karaoke-back/*.pyo
+
+# Secrets e auth
+.env
+.env.local
+cookies.txt
+
+# Build artifacts
+karaoke-front/out/
+
+# Logs
+*.log
+
+# Docker
+karaoke-front/.dockerignore
+karaoke-back/.dockerignore
