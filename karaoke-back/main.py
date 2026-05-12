@@ -1,9 +1,11 @@
 import os
 import uuid
+import json
 import shutil
 import tempfile
 import asyncio
 import time
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 from concurrent.futures import ThreadPoolExecutor
@@ -13,23 +15,13 @@ import replicate
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 import yt_dlp
 
 # ─────────────────────────────────────────────
-# App setup
+# Constants
 # ─────────────────────────────────────────────
-
-app = FastAPI(title="Karaoke API", version="1.0.0")
-
-_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[o.strip() for o in _cors_origins.split(",")],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 TEMP_DIR = Path(tempfile.gettempdir()) / "karaoke_jobs"
 TEMP_DIR.mkdir(exist_ok=True)
@@ -48,6 +40,73 @@ jobs: dict[str, dict] = {}
 video_to_job: dict[str, str] = {}
 
 
+class SongMeta(BaseModel):
+    title: Optional[str] = None
+    channel: Optional[str] = None
+    thumbnail: Optional[str] = None
+
+
+# ─────────────────────────────────────────────
+# Metadata backfill (runs at startup)
+# ─────────────────────────────────────────────
+
+async def _backfill_metadata_task() -> None:
+    """Fetch title/channel/thumbnail for cached songs that have no metadata.json yet."""
+    await asyncio.sleep(5)  # let the server finish starting up
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            for d in sorted(CACHE_DIR.iterdir()):
+                if not d.is_dir() or (d / "metadata.json").exists():
+                    continue
+                dir_name = d.name
+                video_id = dir_name[3:] if dir_name.startswith("yt_") else dir_name
+                try:
+                    r = await client.get(
+                        "https://www.youtube.com/oembed",
+                        params={"url": f"https://www.youtube.com/watch?v={video_id}", "format": "json"},
+                    )
+                    if r.status_code == 200:
+                        data = r.json()
+                        meta = {
+                            "video_id": video_id,
+                            "title":     data.get("title", ""),
+                            "channel":   data.get("author_name", ""),
+                            "thumbnail": data.get("thumbnail_url", f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"),
+                            "processed_at": d.stat().st_mtime,
+                        }
+                        (d / "metadata.json").write_text(json.dumps(meta))
+                except Exception:
+                    pass
+                await asyncio.sleep(0.3)  # be polite to YouTube's oEmbed endpoint
+    except Exception:
+        pass
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    asyncio.create_task(_backfill_metadata_task())
+    yield
+
+
+# ─────────────────────────────────────────────
+# App setup
+# ─────────────────────────────────────────────
+
+app = FastAPI(title="Karaoke API", version="1.0.0", lifespan=lifespan)
+
+_cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in _cors_origins.split(",")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Thread pool for blocking I/O and CPU work
+executor = ThreadPoolExecutor(max_workers=4)
+
+
 def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
@@ -60,9 +119,6 @@ def _base_ydl_opts() -> dict:
     if YTDLP_PROXY:
         opts["proxy"] = YTDLP_PROXY
     return opts
-
-# Thread pool for blocking I/O and CPU work
-executor = ThreadPoolExecutor(max_workers=4)
 
 
 # ─────────────────────────────────────────────
@@ -118,7 +174,7 @@ def _search_sync(query: str, limit: int) -> list[dict]:
 
 
 
-def _direct_sync(job_id: str, video_id: str) -> None:
+def _direct_sync(job_id: str, video_id: str, title: str = "", channel: str = "", thumbnail: str = "") -> None:
     """Download-only worker: saves audio without vocal separation."""
     job_dir = TEMP_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
@@ -155,6 +211,16 @@ def _direct_sync(job_id: str, video_id: str) -> None:
                 check=True, capture_output=True,
             )
 
+        if title or channel:
+            meta = {
+                "video_id": video_id,
+                "title": title,
+                "channel": channel,
+                "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                "processed_at": time.time(),
+            }
+            (cache_entry / "metadata.json").write_text(json.dumps(meta))
+
         shutil.rmtree(job_dir, ignore_errors=True)
         jobs[job_id] = {"status": "done", "audio_path": str(audio_path), "error": None}
 
@@ -163,7 +229,7 @@ def _direct_sync(job_id: str, video_id: str) -> None:
         video_to_job.pop(dedup_key, None)
 
 
-def _process_sync(job_id: str, video_id: str) -> None:
+def _process_sync(job_id: str, video_id: str, title: str = "", channel: str = "", thumbnail: str = "") -> None:
     """
     Blocking worker: downloads audio from YouTube then strips vocals via Replicate.
     Runs inside ThreadPoolExecutor so it doesn't block the event loop.
@@ -251,6 +317,16 @@ def _process_sync(job_id: str, video_id: str) -> None:
         downloaded.unlink(missing_ok=True)
         shutil.rmtree(job_dir, ignore_errors=True)
 
+        if title or channel:
+            meta = {
+                "video_id": video_id,
+                "title": title,
+                "channel": channel,
+                "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                "processed_at": time.time(),
+            }
+            (cache_entry / "metadata.json").write_text(json.dumps(meta))
+
         jobs[job_id] = {
             "status": "done",
             "audio_path": str(instrumental),
@@ -288,14 +364,25 @@ async def search_karaoke(q: str):
 
 
 @app.post("/api/direct/{video_id}")
-async def start_direct(video_id: str, background_tasks: BackgroundTasks):
+async def start_direct(video_id: str, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
     """Download audio only (no vocal separation) — for YouTube karaoke videos."""
     dedup_key = f"yt_{video_id}"
+    title     = (meta.title    or "") if meta else ""
+    channel   = (meta.channel  or "") if meta else ""
+    thumbnail = (meta.thumbnail or "") if meta else ""
 
     cached = CACHE_DIR / dedup_key / "audio.mp3"
     if cached.exists():
         job_id = str(uuid.uuid4())
         jobs[job_id] = {"status": "done", "audio_path": str(cached), "error": None}
+        if title or channel:
+            meta_file = CACHE_DIR / dedup_key / "metadata.json"
+            if not meta_file.exists():
+                meta_file.write_text(json.dumps({
+                    "video_id": video_id, "title": title, "channel": channel,
+                    "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                    "processed_at": time.time(),
+                }))
         return JSONResponse({"job_id": job_id, "status": "done"})
 
     if dedup_key in video_to_job:
@@ -309,7 +396,7 @@ async def start_direct(video_id: str, background_tasks: BackgroundTasks):
 
     async def _run():
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(executor, _direct_sync, job_id, video_id)
+        await loop.run_in_executor(executor, _direct_sync, job_id, video_id, title, channel, thumbnail)
 
     background_tasks.add_task(_run)
     return JSONResponse({"job_id": job_id, "status": "pending"})
@@ -330,13 +417,25 @@ async def search_youtube(q: str, limit: int = 12):
 
 
 @app.post("/api/process/{video_id}")
-async def start_processing(video_id: str, background_tasks: BackgroundTasks):
+async def start_processing(video_id: str, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
     """Kick off vocal-removal job and return a job_id to poll."""
+    title     = (meta.title    or "") if meta else ""
+    channel   = (meta.channel  or "") if meta else ""
+    thumbnail = (meta.thumbnail or "") if meta else ""
+
     # 1. Cache hit — return instantly
     cached = CACHE_DIR / video_id / "instrumental.mp3"
     if cached.exists():
         job_id = str(uuid.uuid4())
         jobs[job_id] = {"status": "done", "audio_path": str(cached), "error": None}
+        if title or channel:
+            meta_file = CACHE_DIR / video_id / "metadata.json"
+            if not meta_file.exists():
+                meta_file.write_text(json.dumps({
+                    "video_id": video_id, "title": title, "channel": channel,
+                    "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                    "processed_at": time.time(),
+                }))
         return JSONResponse({"job_id": job_id, "status": "done"})
 
     # 2. Already processing — return existing job
@@ -352,7 +451,7 @@ async def start_processing(video_id: str, background_tasks: BackgroundTasks):
 
     async def _run():
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(executor, _process_sync, job_id, video_id)
+        await loop.run_in_executor(executor, _process_sync, job_id, video_id, title, channel, thumbnail)
 
     background_tasks.add_task(_run)
     return JSONResponse({"job_id": job_id, "status": "pending"})
@@ -372,6 +471,32 @@ async def get_job(job_id: str):
             "error": job.get("error"),
         }
     )
+
+
+@app.post("/api/backfill-metadata")
+async def backfill_metadata(background_tasks: BackgroundTasks):
+    """Manually trigger metadata backfill for cached songs without metadata.json."""
+    background_tasks.add_task(_backfill_metadata_task)
+    return JSONResponse({"started": True})
+
+
+@app.get("/api/cached-songs")
+async def get_cached_songs():
+    """List all songs that have been processed and have saved metadata (for sitemap)."""
+    songs = []
+    try:
+        for d in CACHE_DIR.iterdir():
+            if not d.is_dir():
+                continue
+            meta_file = d / "metadata.json"
+            if meta_file.exists():
+                try:
+                    songs.append(json.loads(meta_file.read_text()))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    return JSONResponse({"songs": songs})
 
 
 @app.get("/api/processed")

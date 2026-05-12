@@ -103,7 +103,11 @@ export default function SongClient() {
   async function startJob() {
     try {
       const endpoint = direct ? `/api/direct/${videoId}` : `/api/process/${videoId}`;
-      const res = await fetch(endpoint, { method: "POST" });
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title, channel, thumbnail }),
+      });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.status === "done") {
