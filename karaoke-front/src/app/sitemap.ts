@@ -3,7 +3,7 @@ import type { MetadataRoute } from "next";
 const BASE_URL    = process.env.NEXT_PUBLIC_BASE_URL ?? "https://vokao.com.br";
 const BACKEND_URL = process.env.BACKEND_URL          ?? "http://localhost:8000";
 
-export const revalidate = 3600; // rebuild sitemap every hour
+export const dynamic = "force-dynamic";
 
 interface CachedSong {
   video_id:     string;
