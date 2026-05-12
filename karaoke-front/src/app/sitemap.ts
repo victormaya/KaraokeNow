@@ -38,8 +38,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
           channel:   s.channel   || "",
           thumbnail: s.thumbnail || `https://img.youtube.com/vi/${s.video_id}/hqdefault.jpg`,
         });
+        // XML <loc> requires & to be escaped as &amp;
+        const url = `${BASE_URL}/song/${s.video_id}?${params.toString()}`.replace(/&/g, "&amp;");
         return {
-          url:             `${BASE_URL}/song/${s.video_id}?${params.toString()}`,
+          url,
           lastModified:    s.processed_at ? new Date(s.processed_at * 1000) : new Date(),
           changeFrequency: "monthly" as const,
           priority:        0.7,
