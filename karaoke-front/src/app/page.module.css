@@ -34,7 +34,15 @@
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition);
 }
+
+.logo:hover { opacity: 0.75; }
 
 .logoIcon {
   width: 42px;

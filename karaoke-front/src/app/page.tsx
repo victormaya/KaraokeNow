@@ -123,10 +123,10 @@ function HomeContent() {
     <div className={styles.page}>
       <header className={styles.hero}>
         <div className={styles.heroBg} aria-hidden />
-        <div className={styles.logo}>
+        <button className={styles.logo} onClick={() => router.push("/")} aria-label="Ir para a página inicial">
           <div className={styles.logoIcon}>🎤</div>
           <span className={styles.logoText}>VOKAO</span>
-        </div>
+        </button>
         <p className={styles.tagline}>
           Busque qualquer música do YouTube e remova os vocais instantaneamente.
           Karaokê sem limites.
