@@ -26,7 +26,7 @@ interface PlayerCtxValue {
   seek: (time: number) => void;
   // Pitch
   pitch: number;
-  applyPitch: (semitones: number) => Promise<void>;
+  applyPitch: (semitones: number) => void;
   // Voice toggle (original audio)
   originalRef: RefObject<HTMLAudioElement | null>;
   hasOriginal: boolean;
@@ -50,20 +50,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [hasOriginal,  setHasOriginal]  = useState(false);
   const [karaokeMode,  setKaraokeMode]  = useState(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const karaokePSRef  = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const originalPSRef = useRef<any>(null);
-  const toneReady     = useRef(false);
-
   const setTrack = useCallback((newTrack: Track, audioUrl: string) => {
     if (audioRef.current) {
       audioRef.current.pause();
       audioRef.current.src = audioUrl;
+      audioRef.current.playbackRate = 1;
     }
     if (originalRef.current) {
       originalRef.current.pause();
       originalRef.current.src = "";
+      originalRef.current.playbackRate = 1;
     }
     setTrackState(newTrack);
     setPlaying(false);
@@ -73,8 +69,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setHasOriginal(false);
     setKaraokeMode(true);
     setPitch(0);
-    if (karaokePSRef.current)  karaokePSRef.current.pitch  = 0;
-    if (originalPSRef.current) originalPSRef.current.pitch = 0;
   }, []);
 
   const setOriginalTrack = useCallback((url: string) => {
@@ -109,34 +103,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setCurrentTime(time);
   }, []);
 
-  const applyPitch = useCallback(async (semitones: number) => {
+  const applyPitch = useCallback((semitones: number) => {
     setPitch(semitones);
-    if (!toneReady.current) {
-      toneReady.current = true;
-      try {
-        const { PitchShift, getContext, start, connect } = await import("tone");
-        await start();
-        const rawCtx = getContext().rawContext as AudioContext;
-        if (audioRef.current) {
-          const src = rawCtx.createMediaElementSource(audioRef.current);
-          const ps  = new PitchShift(semitones);
-          ps.toDestination();
-          connect(src, ps);
-          karaokePSRef.current = ps;
-        }
-        if (originalRef.current) {
-          const src = rawCtx.createMediaElementSource(originalRef.current);
-          const ps  = new PitchShift(semitones);
-          ps.toDestination();
-          connect(src, ps);
-          originalPSRef.current = ps;
-        }
-      } catch {
-        toneReady.current = false;
-      }
-    } else {
-      if (karaokePSRef.current)  karaokePSRef.current.pitch  = semitones;
-      if (originalPSRef.current) originalPSRef.current.pitch = semitones;
+    const rate = Math.pow(2, semitones / 12);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+      audioRef.current.preservesPitch = true;
+    }
+    if (originalRef.current) {
+      originalRef.current.playbackRate = rate;
+      originalRef.current.preservesPitch = true;
     }
   }, []);
 
