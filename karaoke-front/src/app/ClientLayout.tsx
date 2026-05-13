@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { PlayerProvider, usePlayer } from "@/context/PlayerContext";
 import GlobalHeader from "@/components/GlobalHeader/GlobalHeader";
 import GlobalPlayer from "@/components/GlobalPlayer/GlobalPlayer";
+import PWAInstallBanner from "@/components/PWAInstallBanner/PWAInstallBanner";
 import styles from "./ClientLayout.module.css";
 
 function InnerLayout({ children }: { children: React.ReactNode }) {
@@ -22,6 +23,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
       ].filter(Boolean).join(" ") || undefined}>
         {children}
       </div>
+      <PWAInstallBanner hasPlayer={hasPlayer} />
       <GlobalPlayer />
     </>
   );

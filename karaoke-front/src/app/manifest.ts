@@ -13,13 +13,23 @@ export default function manifest(): MetadataRoute.Manifest {
     categories:       ["entertainment", "music"],
     icons: [
       {
-        src:     "/icon",
-        sizes:   "32x32",
-        type:    "image/png",
+        src:   "/icon",
+        sizes: "32x32",
+        type:  "image/png",
       },
       {
-        src:     "/apple-icon",
-        sizes:   "180x180",
+        src:   "/apple-icon",
+        sizes: "180x180",
+        type:  "image/png",
+      },
+      {
+        src:   "/icons/192",
+        sizes: "192x192",
+        type:  "image/png",
+      },
+      {
+        src:     "/icons/512",
+        sizes:   "512x512",
         type:    "image/png",
         purpose: "maskable",
       },
