@@ -74,6 +74,11 @@ export default function SongClient() {
   const [lyricsLoading, setLyricsLoading] = useState(true);
   const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
 
+  // ── Video background ─────────────────────────────────────────────────────
+  const iframeRef   = useRef<HTMLIFrameElement>(null);
+  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
+  const prevTimeRef = useRef(0);
+
   // ── Share ─────────────────────────────────────────────────────────────────
   const [copied,         setCopied]         = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
@@ -196,6 +201,37 @@ export default function SongClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, karaokeUrl]);
 
+  // ── Video background setup ────────────────────────────────────────────────
+  useEffect(() => {
+    if (!ready) return;
+    const origin = encodeURIComponent(window.location.origin);
+    setIframeSrc(
+      `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&disablekb=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`
+    );
+  }, [ready, videoId]);
+
+  // Sync play/pause
+  useEffect(() => {
+    if (!iframeSrc) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      JSON.stringify({ event: "command", func: player.playing ? "playVideo" : "pauseVideo", args: [] }),
+      "https://www.youtube-nocookie.com"
+    );
+  }, [player.playing, iframeSrc]);
+
+  // Sync seek only on big jumps (user used the seek bar)
+  useEffect(() => {
+    if (!iframeSrc) return;
+    if (Math.abs(player.currentTime - prevTimeRef.current) > 5) {
+      iframeRef.current?.contentWindow?.postMessage(
+        JSON.stringify({ event: "command", func: "seekTo", args: [player.currentTime, true] }),
+        "https://www.youtube-nocookie.com"
+      );
+    }
+    prevTimeRef.current = player.currentTime;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [player.currentTime]);
+
   // ── Lyrics active line ─────────────────────────────────────────────────────
   const activeLineIdx = useMemo(() => {
     if (!lrcLines.length) return -1;
@@ -304,6 +340,20 @@ export default function SongClient() {
   // ── Player page (ready) ───────────────────────────────────────────────────
   return (
     <div className={styles.songPage}>
+      {/* ── Video background ──────────────────────────────────────────── */}
+      <div className={styles.videoBgLayer}>
+        {iframeSrc && (
+          <iframe
+            ref={iframeRef}
+            src={iframeSrc}
+            className={styles.videoBgIframe}
+            allow="autoplay; encrypted-media"
+            title="background"
+          />
+        )}
+        <div className={styles.videoOverlay} />
+      </div>
+
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => router.back()}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
