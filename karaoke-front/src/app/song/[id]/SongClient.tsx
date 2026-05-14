@@ -340,20 +340,6 @@ export default function SongClient() {
   // ── Player page (ready) ───────────────────────────────────────────────────
   return (
     <div className={styles.songPage}>
-      {/* ── Video background ──────────────────────────────────────────── */}
-      <div className={styles.videoBgLayer}>
-        {iframeSrc && (
-          <iframe
-            ref={iframeRef}
-            src={iframeSrc}
-            className={styles.videoBgIframe}
-            allow="autoplay; encrypted-media"
-            title="background"
-          />
-        )}
-        <div className={styles.videoOverlay} />
-      </div>
-
       <div className={styles.topBar}>
         <button className={styles.backBtn} onClick={() => router.back()}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -404,8 +390,21 @@ export default function SongClient() {
           )}
         </div>
 
-        {/* ── RIGHT: Lyrics ────────────────────────────────────────────── */}
-        <div className={styles.lyricsPanel}>
+        {/* ── RIGHT: Lyrics (with video behind) ───────────────────────── */}
+        <div className={styles.lyricsWrapper}>
+          <div className={styles.videoBgLayer}>
+            {iframeSrc && (
+              <iframe
+                ref={iframeRef}
+                src={iframeSrc}
+                className={styles.videoBgIframe}
+                allow="autoplay; encrypted-media"
+                title="background"
+              />
+            )}
+            <div className={styles.videoOverlay} />
+          </div>
+          <div className={styles.lyricsPanel}>
           <h2 className={styles.lyricsHeading}>Letra</h2>
           {lyricsLoading ? (
             <div className={styles.lyricsPlaceholder}>
@@ -451,7 +450,8 @@ export default function SongClient() {
               </a>
             </div>
           )}
-        </div>
+          </div>{/* end lyricsPanel */}
+        </div>{/* end lyricsWrapper */}
       </div>
 
       {/* ── Share modal ───────────────────────────────────────────────── */}
