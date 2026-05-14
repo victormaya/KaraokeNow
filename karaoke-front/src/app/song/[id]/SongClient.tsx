@@ -206,18 +206,18 @@ export default function SongClient() {
     if (!ready) return;
     const origin = encodeURIComponent(window.location.origin);
     setIframeSrc(
-      `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&disablekb=1&iv_load_policy=3&enablejsapi=1&origin=${origin}`
+      `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&disablekb=1&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=${origin}`
     );
   }, [ready, videoId]);
 
-  // Sync play/pause
+  // Start video when iframe is ready (never pause — avoids YouTube's pause overlay)
   useEffect(() => {
     if (!iframeSrc) return;
     iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: "command", func: player.playing ? "playVideo" : "pauseVideo", args: [] }),
+      JSON.stringify({ event: "command", func: "playVideo", args: [] }),
       "https://www.youtube-nocookie.com"
     );
-  }, [player.playing, iframeSrc]);
+  }, [iframeSrc]);
 
   // Sync seek only on big jumps (user used the seek bar)
   useEffect(() => {
