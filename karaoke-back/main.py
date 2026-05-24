@@ -160,7 +160,7 @@ def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
-        "js_runtimes": "node",
+        "js_runtimes": {"node": {"path": "/usr/bin/node"}},
         "extractor_args": {
             "youtube": {"player_client": ["ios", "web", "android"]},
             "youtubepot-bgutilhttp": {"base_url": [BGUTIL_URL]},
