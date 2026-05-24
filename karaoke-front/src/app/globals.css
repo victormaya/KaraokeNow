@@ -28,6 +28,12 @@
   --text-secondary:#9898bb;
   --text-muted:    #555570;
 
+  /* Accent tints (used for backgrounds/glows) */
+  --accent-bg:      rgba(200, 80, 192, 0.12);
+  --accent-glow:    rgba(200, 80, 192, 0.35);
+  --accent-glow-sm: rgba(200, 80, 192, 0.25);
+  --player-bg:      rgba(19, 19, 31, 0.97);
+
   /* Misc */
   --radius-sm:  8px;
   --radius-md:  14px;
@@ -36,12 +42,24 @@
   --transition: 0.2s ease;
 }
 
-/* ─── Drums theme (yellow accent) ───────────────────────────────── */
+/* ─── Drums theme (amber / warm) ────────────────────────────────── */
 [data-theme="drums"] {
-  --accent:       #f59e0b;
-  --accent-alt:   #d97706;
-  --accent-grad:  linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fde68a 100%);
-  --border-hover: rgba(245, 158, 11, 0.45);
+  --accent:         #f59e0b;
+  --accent-alt:     #d97706;
+  --accent-grad:    linear-gradient(135deg, #d97706 0%, #f59e0b 50%, #fde68a 100%);
+  --border-hover:   rgba(245, 158, 11, 0.45);
+
+  /* Warm dark surfaces — no more purple tints */
+  --bg:             #0c0a04;
+  --surface:        #151209;
+  --surface-2:      #1e1a0c;
+  --surface-3:      #2a230f;
+
+  /* Accent tints in amber */
+  --accent-bg:      rgba(245, 158, 11, 0.12);
+  --accent-glow:    rgba(245, 158, 11, 0.35);
+  --accent-glow-sm: rgba(245, 158, 11, 0.25);
+  --player-bg:      rgba(21, 18, 9, 0.97);
 }
 
 html {

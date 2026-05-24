@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { usePlayer } from "@/context/PlayerContext";
 import styles from "./GlobalPlayer.module.css";
 
@@ -12,7 +12,9 @@ export default function GlobalPlayer() {
     pitch, applyPitch,
     hasOriginal, karaokeMode, switchMode,
   } = usePlayer();
-  const router = useRouter();
+  const router   = useRouter();
+  const pathname = usePathname();
+  const isDrums  = pathname?.startsWith("/drums") ?? false;
 
   if (!track) return null;
 
@@ -56,31 +58,35 @@ export default function GlobalPlayer() {
 
         {/* Controls */}
         <div className={styles.controls}>
-          {/* Voice toggle */}
+          {/* Voice / drums toggle */}
           {hasOriginal && (
             <button
               className={`${styles.modeBtn} ${karaokeMode ? styles.modeBtnActive : ""}`}
               onClick={() => switchMode(!karaokeMode)}
-              title={karaokeMode ? "Modo karaokê (sem voz)" : "Modo original (com voz)"}
+              title={isDrums
+                ? (karaokeMode ? "Sem bateria" : "Com bateria")
+                : (karaokeMode ? "Modo karaokê (sem voz)" : "Modo original (com voz)")}
             >
-              {karaokeMode ? "🎤" : "🎵"}
+              {isDrums ? "🥁" : (karaokeMode ? "🎤" : "🎵")}
             </button>
           )}
 
-          {/* Pitch */}
-          <div className={styles.pitch}>
-            <button
-              className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}
-              aria-label="Diminuir tom"
-            >♭</button>
-            <span className={styles.pitchVal}>{pitchLabel}<span className={styles.pitchUnit}>st</span></span>
-            <button
-              className={styles.pitchBtn}
-              onClick={() => applyPitch(Math.min(12, pitch + 0.5))}
-              aria-label="Aumentar tom"
-            >♯</button>
-          </div>
+          {/* Pitch — hidden in drums mode */}
+          {!isDrums && (
+            <div className={styles.pitch}>
+              <button
+                className={styles.pitchBtn}
+                onClick={() => applyPitch(Math.max(-12, pitch - 0.5))}
+                aria-label="Diminuir tom"
+              >♭</button>
+              <span className={styles.pitchVal}>{pitchLabel}<span className={styles.pitchUnit}>st</span></span>
+              <button
+                className={styles.pitchBtn}
+                onClick={() => applyPitch(Math.min(12, pitch + 0.5))}
+                aria-label="Aumentar tom"
+              >♯</button>
+            </div>
+          )}
 
           {/* Play / Pause */}
           <button

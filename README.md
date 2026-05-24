@@ -1,6 +1,6 @@
 # KaraokeNow
 
-Busque qualquer música do YouTube, remova os vocais com IA e cante com a letra sincronizada.
+Busque qualquer música do YouTube, remova os vocais com IA e cante com a letra sincronizada — ou remova a bateria para praticar junto (modo Play Along).
 
 ## Serviços e contas necessárias
 
@@ -103,21 +103,32 @@ Usuário → Next.js (3000) → FastAPI (8000) → Replicate (Demucs)
 | Container | Porta | Descrição |
 |---|---|---|
 | `karaoke-frontend` | 3000 | Interface Next.js 15 |
-| `karaoke-backend` | 8000 | API FastAPI — busca, download, separação vocal |
+| `karaoke-backend` | 8000 | API FastAPI — busca, download, separação vocal e de bateria |
 
-### Fluxo de processamento de uma música
+### Fluxo de processamento — modo Karaokê
 
 1. Usuário busca uma música → yt-dlp pesquisa no YouTube via proxy
 2. Usuário clica para processar → backend baixa o áudio via yt-dlp (proxy + cookies)
-3. Áudio enviado ao Replicate (modelo Demucs `mdx_q`) para separar vocais
+3. Áudio enviado ao Replicate (modelo Demucs, `stem="vocals"`) para separar vocais
 4. Backend salva `instrumental.mp3` (sem vocals) e `original.mp3` (com vocals) no cache
 5. Frontend carrega ambos como elementos `<audio>` — o toggle troca o mute entre eles
 6. Letra sincronizada carregada via lrclib.net e avança com o tempo de reprodução
+
+### Fluxo de processamento — modo Play Along (bateria)
+
+1. Usuário acessa `/drums` e busca uma música
+2. Backend baixa o áudio (ou reutiliza `original.mp3` já em cache)
+3. Áudio enviado ao Replicate (modelo Demucs, `stem="drums"`) para isolar a bateria
+4. Backend detecta o BPM via análise de energia de onset (numpy FFT) e salva em `bpm.json`
+5. Backend salva `no_drums.mp3` (sem bateria) no cache
+6. Frontend exibe BPM, toggle para ligar/desligar a bateria e controle de velocidade (0.5×–1.5×)
 
 ### Cache
 
 Músicas processadas ficam em `/app/cache/{video_id}/`:
 - `instrumental.mp3` — pista karaokê (sem vocals)
-- `original.mp3` — pista original (com vocals)
+- `original.mp3` — pista original (com vocals e bateria)
+- `no_drums.mp3` — pista play along (sem bateria)
+- `bpm.json` — BPM detectado pelo backend
 
 Na segunda vez que alguém tocar a mesma música, o processamento é instantâneo.

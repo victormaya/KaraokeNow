@@ -35,8 +35,8 @@
   font-size: 0.78rem;
   font-weight: 700;
   color: var(--accent);
-  background: rgba(200, 80, 192, 0.1);
-  border: 1px solid rgba(200, 80, 192, 0.25);
+  background: var(--accent-bg);
+  border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 99px;
   padding: 3px 12px;
 }
@@ -128,8 +128,8 @@
   align-items: center;
   gap: 8px;
   padding: 10px 16px;
-  background: rgba(65, 88, 208, 0.1);
-  border: 1px solid rgba(65, 88, 208, 0.25);
+  background: rgba(245, 158, 11, 0.07);
+  border: 1px solid rgba(245, 158, 11, 0.22);
   border-radius: var(--radius-sm);
   font-size: 0.8rem;
   color: var(--text-secondary);
@@ -233,8 +233,8 @@
   align-items: center;
   gap: 5px;
   padding: 3px 12px;
-  background: rgba(200, 80, 192, 0.1);
-  border: 1px solid rgba(200, 80, 192, 0.28);
+  background: var(--accent-bg);
+  border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 99px;
   color: var(--accent);
   font-size: 0.78rem;
@@ -303,7 +303,7 @@
 .switchTrack.switchOn {
   background: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 0 16px rgba(200, 80, 192, 0.45);
+  box-shadow: 0 0 16px var(--accent-glow);
 }
 
 .switchThumb {
@@ -348,12 +348,12 @@
   border-radius: 50%;
   background: var(--accent);
   cursor: pointer;
-  box-shadow: 0 0 0 3px rgba(200, 80, 192, 0.25);
+  box-shadow: 0 0 0 3px var(--accent-glow-sm);
   transition: box-shadow var(--transition);
 }
 
 .speedSlider::-webkit-slider-thumb:hover {
-  box-shadow: 0 0 0 5px rgba(200, 80, 192, 0.35);
+  box-shadow: 0 0 0 5px var(--accent-glow);
 }
 
 .speedSlider::-moz-range-thumb {

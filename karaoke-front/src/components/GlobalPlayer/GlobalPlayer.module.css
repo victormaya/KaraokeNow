@@ -4,7 +4,7 @@
   left: 0;
   right: 0;
   z-index: 200;
-  background: rgba(19, 19, 31, 0.97);
+  background: var(--player-bg);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-top: 1px solid var(--border);
@@ -96,7 +96,7 @@
 }
 
 .modeBtn:hover     { border-color: var(--accent); }
-.modeBtnActive     { border-color: var(--accent); background: rgba(200,80,192,0.12); }
+.modeBtnActive     { border-color: var(--accent); background: var(--accent-bg); }
 
 /* Pitch */
 .pitch {

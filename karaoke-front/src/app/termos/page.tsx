@@ -15,7 +15,7 @@ export default function TermosPage() {
         <Link href="/" className={styles.back}>← Voltar ao VOKAO</Link>
 
         <h1 className={styles.title}>Termos de Uso</h1>
-        <p className={styles.updated}>Última atualização: maio de 2025</p>
+        <p className={styles.updated}>Última atualização: maio de 2026</p>
 
         <section className={styles.section}>
           <h2>1. Aceitação</h2>
@@ -28,9 +28,11 @@ export default function TermosPage() {
         <section className={styles.section}>
           <h2>2. Descrição do serviço</h2>
           <p>
-            O VOKAO é uma ferramenta que permite buscar vídeos no YouTube, remover os vocais do áudio
-            usando inteligência artificial e exibir a letra sincronizada, possibilitando a prática de karaokê
-            de forma gratuita e sem necessidade de cadastro.
+            O VOKAO é uma ferramenta que oferece dois modos de uso: <strong>Karaokê</strong> — remove os
+            vocais do áudio usando inteligência artificial e exibe a letra sincronizada — e{" "}
+            <strong>Play Along (Bateria)</strong> — remove a bateria do áudio para que músicos possam praticar
+            junto à música em seu próprio ritmo, com controle de velocidade e detecção de BPM. Ambos os modos
+            são gratuitos e não exigem cadastro.
           </p>
         </section>
 

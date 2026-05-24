@@ -15,13 +15,14 @@ export default function PrivacidadePage() {
         <Link href="/" className={styles.back}>← Voltar ao VOKAO</Link>
 
         <h1 className={styles.title}>Política de Privacidade</h1>
-        <p className={styles.updated}>Última atualização: maio de 2025</p>
+        <p className={styles.updated}>Última atualização: maio de 2026</p>
 
         <section className={styles.section}>
           <h2>1. Quem somos</h2>
           <p>
-            O <strong>VOKAO</strong> é um serviço online de karaokê que remove vocais de músicas do YouTube
-            em tempo real, operado por <strong>Victor Maya</strong>. Para dúvidas sobre privacidade, entre em
+            O <strong>VOKAO</strong> é um serviço online que oferece karaokê (remoção de vocais) e
+            prática musical Play Along (remoção de bateria) a partir de músicas do YouTube, operado por{" "}
+            <strong>Victor Maya</strong>. Para dúvidas sobre privacidade, entre em
             contato pelo e-mail <a href="mailto:victor.maya42@gmail.com">victor.maya42@gmail.com</a>.
           </p>
         </section>
@@ -40,7 +41,7 @@ export default function PrivacidadePage() {
         <section className={styles.section}>
           <h2>3. Como usamos os dados</h2>
           <ul>
-            <li>Processar sua solicitação de karaokê;</li>
+            <li>Processar sua solicitação de karaokê ou de remoção de bateria (Play Along);</li>
             <li>Manter os logs operacionais do servidor (segurança e diagnóstico de erros);</li>
             <li>Armazenar o áudio processado em cache para que outros usuários da mesma música não precisem aguardar o processamento.</li>
           </ul>
@@ -56,8 +57,8 @@ export default function PrivacidadePage() {
           <ul>
             <li>
               <strong>Replicate (EUA):</strong> o áudio baixado do YouTube é enviado à plataforma Replicate para
-              remoção de vocais com inteligência artificial (modelo Demucs). O Replicate processa o arquivo e o
-              descarta após a conclusão. Consulte a{" "}
+              remoção de vocais (modo Karaokê) ou remoção de bateria (modo Play Along) com inteligência artificial
+              (modelo Demucs). O Replicate processa o arquivo e o descarta após a conclusão. Consulte a{" "}
               <a href="https://replicate.com/privacy" target="_blank" rel="noopener noreferrer">
                 política de privacidade da Replicate
               </a>.
@@ -92,7 +93,7 @@ export default function PrivacidadePage() {
           <h2>6. Retenção de dados</h2>
           <ul>
             <li><strong>Logs de servidor (IP):</strong> retidos por até 30 dias e então descartados automaticamente.</li>
-            <li><strong>Cache de áudio:</strong> os arquivos de áudio processados são mantidos indefinidamente no servidor para melhorar a experiência de usuários futuros. Não há vínculo entre o arquivo armazenado e o usuário que o solicitou.</li>
+            <li><strong>Cache de áudio:</strong> os arquivos de áudio processados (<code>instrumental.mp3</code>, <code>original.mp3</code>, <code>no_drums.mp3</code>) são mantidos indefinidamente no servidor para melhorar a experiência de usuários futuros. Não há vínculo entre o arquivo armazenado e o usuário que o solicitou.</li>
           </ul>
         </section>
 
