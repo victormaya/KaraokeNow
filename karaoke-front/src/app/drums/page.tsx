@@ -30,6 +30,12 @@ function DrumsContent() {
   const searchParams = useSearchParams();
   const query        = searchParams.get("q") ?? "";
 
+  // Apply drums colour theme to the whole page (including GlobalPlayer)
+  useEffect(() => {
+    document.documentElement.dataset.theme = "drums";
+    return () => { delete document.documentElement.dataset.theme; };
+  }, []);
+
   const [songs,       setSongs]       = useState<Song[]>([]);
   const [searching,   setSearching]   = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);

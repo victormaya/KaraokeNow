@@ -28,6 +28,12 @@ export default function DrumClient() {
   const channel   = searchParams.get("channel")   ?? "";
   const thumbnail = searchParams.get("thumbnail") ?? "";
 
+  // Apply drums colour theme to the whole page (including GlobalPlayer)
+  useEffect(() => {
+    document.documentElement.dataset.theme = "drums";
+    return () => { delete document.documentElement.dataset.theme; };
+  }, []);
+
   const [jobStatus, setJobStatus] = useState<string>("pending");
   const [progress,  setProgress]  = useState(0);
   const [audioUrl,  setAudioUrl]  = useState<string | null>(null);
