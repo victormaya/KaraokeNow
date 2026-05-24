@@ -41,6 +41,7 @@ services:
       - COOKIE_REFRESH_INTERVAL=${COOKIE_REFRESH_INTERVAL:-172800}
       - GOOGLE_EMAIL=${GOOGLE_EMAIL:-}
       - GOOGLE_PASSWORD=${GOOGLE_PASSWORD:-}
+      - PYTHONUNBUFFERED=1
     restart: unless-stopped
     depends_on:
       backend:
