@@ -30,5 +30,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  cookie-refresher:
+    build:
+      context: ./karaoke-back
+      dockerfile: Dockerfile.cookies
+    volumes:
+      - ./cookies.txt:/app/cookies.txt
+    environment:
+      - COOKIES_FILE=/app/cookies.txt
+      - COOKIE_REFRESH_INTERVAL=${COOKIE_REFRESH_INTERVAL:-172800}
+      - GOOGLE_EMAIL=${GOOGLE_EMAIL:-}
+      - GOOGLE_PASSWORD=${GOOGLE_PASSWORD:-}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+
 volumes:
   karaoke_cache:
