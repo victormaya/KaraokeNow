@@ -70,41 +70,51 @@ def export_netscape(cookies: list[dict], path: Path) -> None:
 
 
 def _try_login(page) -> bool:
-    """Attempt Google login via YouTube sign-in page. Returns True on success."""
+    """Attempt Google login. Returns True on success."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         return False
     print("Session expired — attempting automatic re-login…")
     try:
-        page.goto(
-            "https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https://www.youtube.com/signin",
-            wait_until="domcontentloaded", timeout=30_000,
-        )
-        page.wait_for_timeout(2_000)
+        page.goto("https://accounts.google.com/signin/v2/identifier?hl=pt-BR",
+                  wait_until="domcontentloaded", timeout=30_000)
+        page.wait_for_timeout(3_000)
+        print(f"[login] URL: {page.url} | Title: {page.title()}")
 
-        # Email step
-        email_input = page.locator('input[type="email"]')
-        email_input.wait_for(timeout=15_000)
+        # Try multiple known selectors for the email field
+        email_sel = (
+            'input[name="identifier"], '
+            'input[type="email"], '
+            'input[autocomplete="username"]'
+        )
+        email_input = page.locator(email_sel).first
+        email_input.wait_for(state="visible", timeout=20_000)
         email_input.click()
-        page.wait_for_timeout(500)
-        page.keyboard.type(GOOGLE_EMAIL, delay=80)
-        page.wait_for_timeout(700)
+        page.wait_for_timeout(600)
+        page.keyboard.type(GOOGLE_EMAIL, delay=90)
+        page.wait_for_timeout(800)
         page.keyboard.press("Enter")
-        page.wait_for_timeout(2_000)
+        page.wait_for_timeout(2_500)
 
         # Password step
-        pwd_input = page.locator('input[type="password"]')
-        pwd_input.wait_for(timeout=15_000)
+        pwd_input = page.locator('input[type="password"], input[name="password"]').first
+        pwd_input.wait_for(state="visible", timeout=20_000)
         pwd_input.click()
-        page.wait_for_timeout(500)
-        page.keyboard.type(GOOGLE_PASSWORD, delay=80)
-        page.wait_for_timeout(700)
+        page.wait_for_timeout(600)
+        page.keyboard.type(GOOGLE_PASSWORD, delay=90)
+        page.wait_for_timeout(800)
         page.keyboard.press("Enter")
 
         page.wait_for_url("**youtube.com**", timeout=30_000)
-        page.wait_for_timeout(2_000)
+        page.wait_for_timeout(3_000)
         print("Re-login successful.")
         return True
     except Exception as exc:
+        # Print page state for debugging
+        try:
+            print(f"[login-debug] URL: {page.url}")
+            print(f"[login-debug] Title: {page.title()}")
+        except Exception:
+            pass
         print(f"Re-login failed: {exc}")
         return False
 
