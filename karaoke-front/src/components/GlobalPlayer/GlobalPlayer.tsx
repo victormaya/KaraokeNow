@@ -61,10 +61,10 @@ export default function GlobalPlayer() {
           {/* Voice / drums toggle */}
           {hasOriginal && (
             <button
-              className={`${styles.modeBtn} ${karaokeMode ? styles.modeBtnActive : ""}`}
+              className={`${styles.modeBtn} ${(isDrums ? !karaokeMode : karaokeMode) ? styles.modeBtnActive : ""}`}
               onClick={() => switchMode(!karaokeMode)}
               title={isDrums
-                ? (karaokeMode ? "Sem bateria" : "Com bateria")
+                ? (!karaokeMode ? "Com bateria (clique para remover)" : "Sem bateria (clique para adicionar)")
                 : (karaokeMode ? "Modo karaokê (sem voz)" : "Modo original (com voz)")}
             >
               {isDrums ? "🥁" : (karaokeMode ? "🎤" : "🎵")}

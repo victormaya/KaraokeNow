@@ -12,7 +12,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
   const pathname  = usePathname();
   const { track } = usePlayer();
 
-  const isHome    = pathname === "/";
+  const isHome    = pathname === "/" || pathname === "/drums";
   const hasPlayer = !!track;
 
   return (
