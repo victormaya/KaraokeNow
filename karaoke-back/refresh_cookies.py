@@ -21,16 +21,9 @@ REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(48 * 3600
 GOOGLE_EMAIL       = os.environ.get("GOOGLE_EMAIL", "")
 GOOGLE_PASSWORD    = os.environ.get("GOOGLE_PASSWORD", "")
 
-LAUNCH_ARGS = [
-    "--no-sandbox",
-    "--disable-dev-shm-usage",
-    "--disable-gpu",
-    "--disable-blink-features=AutomationControlled",
-]
 USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/125.0.0.0 Safari/537.36"
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) "
+    "Gecko/20100101 Firefox/126.0"
 )
 
 
@@ -77,18 +70,38 @@ def export_netscape(cookies: list[dict], path: Path) -> None:
 
 
 def _try_login(page) -> bool:
-    """Attempt Google login. Returns True on success."""
+    """Attempt Google login via YouTube sign-in page. Returns True on success."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         return False
     print("Session expired — attempting automatic re-login…")
     try:
-        page.goto("https://accounts.google.com/signin/v2/identifier", wait_until="domcontentloaded", timeout=30_000)
-        page.fill('input[type="email"]', GOOGLE_EMAIL)
-        page.locator("#identifierNext").click()
-        page.wait_for_selector('input[type="password"]', timeout=10_000)
-        page.fill('input[type="password"]', GOOGLE_PASSWORD)
-        page.locator("#passwordNext").click()
-        page.wait_for_url("**youtube.com**", timeout=20_000)
+        page.goto(
+            "https://accounts.google.com/ServiceLogin?service=youtube&uilel=3&passive=true&continue=https://www.youtube.com/signin",
+            wait_until="domcontentloaded", timeout=30_000,
+        )
+        page.wait_for_timeout(2_000)
+
+        # Email step
+        email_input = page.locator('input[type="email"]')
+        email_input.wait_for(timeout=15_000)
+        email_input.click()
+        page.wait_for_timeout(500)
+        page.keyboard.type(GOOGLE_EMAIL, delay=80)
+        page.wait_for_timeout(700)
+        page.keyboard.press("Enter")
+        page.wait_for_timeout(2_000)
+
+        # Password step
+        pwd_input = page.locator('input[type="password"]')
+        pwd_input.wait_for(timeout=15_000)
+        pwd_input.click()
+        page.wait_for_timeout(500)
+        page.keyboard.type(GOOGLE_PASSWORD, delay=80)
+        page.wait_for_timeout(700)
+        page.keyboard.press("Enter")
+
+        page.wait_for_url("**youtube.com**", timeout=30_000)
+        page.wait_for_timeout(2_000)
         print("Re-login successful.")
         return True
     except Exception as exc:
@@ -107,8 +120,13 @@ def refresh_once() -> bool:
         return False
 
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(headless=True, args=LAUNCH_ARGS)
-        ctx = browser.new_context(user_agent=USER_AGENT)
+        # Firefox is less aggressively blocked by Google than headless Chromium
+        browser = pw.firefox.launch(headless=True)
+        ctx = browser.new_context(
+            user_agent=USER_AGENT,
+            viewport={"width": 1280, "height": 800},
+            locale="pt-BR",
+        )
         ctx.add_cookies(existing)
         page = ctx.new_page()
 
