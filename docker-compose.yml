@@ -37,6 +37,9 @@ services:
     image: brainicism/bgutil-ytdlp-pot-provider:latest
     ports:
       - "4416:4416"
+    environment:
+      - HTTP_PROXY=${YTDLP_PROXY:-}
+      - HTTPS_PROXY=${YTDLP_PROXY:-}
     restart: unless-stopped
 
   cookie-refresher:
