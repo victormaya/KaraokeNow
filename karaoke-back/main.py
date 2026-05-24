@@ -160,9 +160,9 @@ def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
+        "js_runtimes": "node",
         "extractor_args": {
-            # tv_embedded simulates an embedded player — rarely flagged, no PO token needed
-            "youtube": {"player_client": ["tv_embedded", "android", "web"]},
+            "youtube": {"player_client": ["ios", "web", "android"]},
             "youtubepot-bgutilhttp": {"base_url": [BGUTIL_URL]},
         },
     }
