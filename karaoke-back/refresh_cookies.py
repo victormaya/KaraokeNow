@@ -69,54 +69,79 @@ def export_netscape(cookies: list[dict], path: Path) -> None:
     path.write_text("".join(lines))
 
 
-def _try_login(page) -> bool:
-    """Attempt Google login. Returns True on success."""
+def _do_login(browser) -> list[dict] | None:
+    """
+    Open a FRESH browser context (no existing cookies) and log in to Google.
+    Returns the YouTube cookies on success, None on failure.
+    """
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
-        return False
-    print("Session expired — attempting automatic re-login…")
+        return None
+    print("Attempting automatic re-login with fresh session…")
+    ctx = browser.new_context(
+        user_agent=USER_AGENT,
+        viewport={"width": 1280, "height": 800},
+        locale="pt-BR",
+    )
+    page = ctx.new_page()
     try:
-        page.goto("https://accounts.google.com/signin/v2/identifier?hl=pt-BR",
-                  wait_until="domcontentloaded", timeout=30_000)
-        page.wait_for_timeout(3_000)
-        print(f"[login] URL: {page.url} | Title: {page.title()}")
-
-        # Try multiple known selectors for the email field
-        email_sel = (
-            'input[name="identifier"], '
-            'input[type="email"], '
-            'input[autocomplete="username"]'
+        # Force the identifier step, bypassing accountchooser
+        page.goto(
+            "https://accounts.google.com/signin/v2/identifier"
+            "?flowName=GlifWebSignIn&flowEntry=ServiceLogin&service=youtube",
+            wait_until="domcontentloaded", timeout=30_000,
         )
-        email_input = page.locator(email_sel).first
-        email_input.wait_for(state="visible", timeout=20_000)
-        email_input.click()
-        page.wait_for_timeout(600)
+        page.wait_for_timeout(2_500)
+        print(f"[login] {page.url}")
+
+        # If redirected to accountchooser, click "Use another account"
+        if "accountchooser" in page.url or "AccountChooser" in page.url:
+            print("[login] AccountChooser detected — clicking 'Use another account'")
+            other = page.locator(
+                'li[data-identifier="__emptyaccount__"], '
+                '[data-action="useAnotherAccount"], '
+                'button:has-text("Usar outra conta"), '
+                'button:has-text("Use another account"), '
+                'a:has-text("Usar outra conta")'
+            ).first
+            other.wait_for(state="visible", timeout=10_000)
+            other.click()
+            page.wait_for_timeout(2_000)
+            print(f"[login] After click: {page.url}")
+
+        # Email
+        email_sel = 'input[name="identifier"], input[type="email"], input[autocomplete="username"]'
+        email = page.locator(email_sel).first
+        email.wait_for(state="visible", timeout=20_000)
+        email.click()
+        page.wait_for_timeout(500)
         page.keyboard.type(GOOGLE_EMAIL, delay=90)
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(700)
         page.keyboard.press("Enter")
         page.wait_for_timeout(2_500)
 
-        # Password step
-        pwd_input = page.locator('input[type="password"], input[name="password"]').first
-        pwd_input.wait_for(state="visible", timeout=20_000)
-        pwd_input.click()
-        page.wait_for_timeout(600)
+        # Password
+        pwd = page.locator('input[type="password"], input[name="Passwd"]').first
+        pwd.wait_for(state="visible", timeout=20_000)
+        pwd.click()
+        page.wait_for_timeout(500)
         page.keyboard.type(GOOGLE_PASSWORD, delay=90)
-        page.wait_for_timeout(800)
+        page.wait_for_timeout(700)
         page.keyboard.press("Enter")
-
         page.wait_for_url("**youtube.com**", timeout=30_000)
         page.wait_for_timeout(3_000)
-        print("Re-login successful.")
-        return True
+
+        cookies = ctx.cookies(["https://www.youtube.com", "https://.youtube.com"])
+        print(f"Re-login successful — {len(cookies)} cookies obtained.")
+        ctx.close()
+        return cookies
     except Exception as exc:
-        # Print page state for debugging
         try:
-            print(f"[login-debug] URL: {page.url}")
-            print(f"[login-debug] Title: {page.title()}")
+            print(f"[login-debug] URL: {page.url} | Title: {page.title()}")
         except Exception:
             pass
         print(f"Re-login failed: {exc}")
-        return False
+        ctx.close()
+        return None
 
 
 def refresh_once() -> bool:
@@ -130,7 +155,6 @@ def refresh_once() -> bool:
         return False
 
     with sync_playwright() as pw:
-        # Firefox is less aggressively blocked by Google than headless Chromium
         browser = pw.firefox.launch(headless=True)
         ctx = browser.new_context(
             user_agent=USER_AGENT,
@@ -144,23 +168,25 @@ def refresh_once() -> bool:
             page.goto("https://www.youtube.com", wait_until="domcontentloaded", timeout=30_000)
             page.wait_for_timeout(4_000)
 
-            # Detect if we got signed out
             signed_out = page.locator('a[href*="accounts.google.com/ServiceLogin"]').count() > 0
+            ctx.close()
 
             if signed_out:
-                if not _try_login(page):
+                fresh_cookies = _do_login(browser)
+                if not fresh_cookies:
                     print("[refresh] Signed out and re-login unavailable — keeping old cookies.")
                     browser.close()
                     return False
-                page.goto("https://www.youtube.com", wait_until="domcontentloaded", timeout=30_000)
-                page.wait_for_timeout(3_000)
-
-            refreshed = ctx.cookies(["https://www.youtube.com", "https://.youtube.com"])
-            if refreshed:
-                export_netscape(refreshed, COOKIES_FILE)
-                print(f"[refresh] OK — {len(refreshed)} cookies saved to {COOKIES_FILE}")
+                export_netscape(fresh_cookies, COOKIES_FILE)
+                print(f"[refresh] OK (re-login) — {len(fresh_cookies)} cookies saved.")
             else:
-                print("[refresh] No cookies returned — keeping original file.")
+                # Session still valid — just re-export the refreshed cookies
+                refreshed = ctx.cookies(["https://www.youtube.com", "https://.youtube.com"])
+                if refreshed:
+                    export_netscape(refreshed, COOKIES_FILE)
+                    print(f"[refresh] OK — {len(refreshed)} cookies saved to {COOKIES_FILE}")
+                else:
+                    print("[refresh] No cookies returned — keeping original file.")
         except PWTimeout as exc:
             print(f"[refresh] Timeout: {exc}")
         except Exception as exc:
