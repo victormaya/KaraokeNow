@@ -1,140 +1,313 @@
+/* ─── Page shell ─────────────────────────────────────────────────── */
 .page {
   min-height: 100dvh;
-  background: var(--bg);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 0 16px 60px;
 }
 
-/* ─── Hero ─────────────────────────────────────────────────────────────────── */
-
+/* ─── Gradient hero header ───────────────────────────────────────── */
 .hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
+  padding: 56px 24px 48px;
   text-align: center;
-  padding: 64px 16px 40px;
-  gap: 14px;
-  max-width: 560px;
+  overflow: hidden;
 }
 
-.heroIcon {
-  font-size: 3rem;
-  line-height: 1;
+.heroBg {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+      ellipse 80% 60% at 50% -10%,
+      rgba(200, 80, 192, 0.25) 0%,
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 70% 110%,
+      rgba(65, 88, 208, 0.2) 0%,
+      transparent 70%
+    );
+  pointer-events: none;
 }
 
-.heroTitle {
-  font-size: 2rem;
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-md);
+  transition: opacity var(--transition);
+}
+
+.logo:hover { opacity: 0.75; }
+
+.logoIcon {
+  width: 42px;
+  height: 42px;
+  background: var(--accent-grad);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+}
+
+.logoText {
+  font-size: 1.6rem;
   font-weight: 800;
-  color: var(--text-primary);
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   letter-spacing: -0.02em;
-  line-height: 1.2;
 }
 
-.heroDesc {
+.tagline {
   font-size: 1rem;
   color: var(--text-secondary);
+  margin-bottom: 32px;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
   line-height: 1.6;
 }
 
-/* ─── Search form ──────────────────────────────────────────────────────────── */
-
-.searchForm {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  max-width: 560px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 99px;
-  overflow: hidden;
-  transition: border-color var(--transition);
-  margin-bottom: 8px;
-}
-
-.searchForm:focus-within {
-  border-color: var(--accent);
-}
-
-.searchInput {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  padding: 0 20px;
-  height: 52px;
-  color: var(--text-primary);
-  font-size: 1rem;
-}
-
-.searchInput::placeholder {
-  color: var(--text-muted);
-}
-
-.searchBtn {
+/* ─── Mode switcher ──────────────────────────────────────────────── */
+.modeRow {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--accent-grad);
-  border: none;
-  padding: 0 22px;
-  height: 52px;
-  color: #fff;
-  font-size: 0.88rem;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity var(--transition);
   white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
 }
 
-.searchBtn:hover {
-  opacity: 0.88;
+.modeBtn:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
 }
 
-/* ─── Hint / status ────────────────────────────────────────────────────────── */
+.modeBtnActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: default;
+  box-shadow: 0 0 16px rgba(200, 80, 192, 0.3);
+}
 
-.hint {
+.modeBtnActive:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ─── Main content area ──────────────────────────────────────────── */
+.main {
+  flex: 1;
+  max-width: 1240px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 24px 40px;
+}
+
+/* ─── Error banner ───────────────────────────────────────────────── */
+.errorBanner {
+  background: rgba(255, 90, 90, 0.12);
+  border: 1px solid rgba(255, 90, 90, 0.3);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  margin-bottom: 24px;
+  font-size: 0.88rem;
+  color: #ff8a8a;
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 0.88rem;
-  color: var(--text-muted);
-  margin: 16px 0;
 }
 
-.spinner {
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.15);
-  border-top-color: var(--accent);
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
+/* ─── Trending section ───────────────────────────────────────────── */
+.trendingSection {
+  padding-top: 4px;
+}
+
+/* ─── Tab bar ────────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.tabBar::-webkit-scrollbar { display: none; }
+
+.tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
   flex-shrink: 0;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.tab:hover {
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
-/* ─── Results ──────────────────────────────────────────────────────────────── */
+.tabActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(200, 80, 192, 0.35);
+}
 
-.resultsSection {
+.tabActive:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* ─── Trending grid ──────────────────────────────────────────────── */
+.trendingGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 12px;
+}
+
+@media (max-width: 860px) {
+  .trendingGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 500px) {
+  .trendingGrid { grid-template-columns: minmax(0, 1fr); }
+}
+
+.trendingCard {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--transition);
   width: 100%;
-  max-width: 900px;
-  margin-top: 24px;
+  min-width: 0;
+  overflow: hidden;
 }
 
-.resultsCount {
-  font-size: 0.78rem;
+.trendingCard:hover { background: var(--surface); }
+.trendingCard:hover .trendingName { color: var(--accent); }
+
+.trendingRank {
+  font-size: 0.72rem;
+  font-weight: 700;
   color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  font-weight: 600;
-  margin-bottom: 14px;
+  font-variant-numeric: tabular-nums;
+  width: 20px;
+  min-width: 20px;
+  text-align: right;
+  flex-shrink: 0;
 }
 
+.trendingRank[data-top="true"] { color: var(--accent); }
+
+.trendingArt {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--surface-2);
+}
+
+.trendingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.trendingName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color var(--transition);
+}
+
+.trendingArtist {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trendingCardSkeleton {
+  height: 60px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.8; }
+}
+
+/* ─── "Remover bateria" section header ───────────────────────────── */
+.aiSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.aiSectionSub {
+  font-size: 0.75rem;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+/* ─── Search results grid ────────────────────────────────────────── */
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -148,14 +321,13 @@
   overflow: hidden;
   cursor: pointer;
   text-align: left;
-  transition: border-color var(--transition), transform var(--transition), background var(--transition);
+  transition: border-color var(--transition), transform var(--transition);
   padding: 0;
 }
 
 .card:hover {
   border-color: var(--accent);
   transform: translateY(-2px);
-  background: var(--surface-2);
 }
 
 .thumb {
@@ -189,13 +361,9 @@
   transition: opacity var(--transition);
 }
 
-.card:hover .playOverlay {
-  opacity: 1;
-}
+.card:hover .playOverlay { opacity: 1; }
 
-.cardInfo {
-  padding: 10px 12px;
-}
+.cardInfo { padding: 10px 12px; }
 
 .cardTitle {
   font-size: 0.82rem;
@@ -217,23 +385,9 @@
   text-overflow: ellipsis;
 }
 
-/* ─── Back link ────────────────────────────────────────────────────────────── */
-
-.backLink {
-  margin-top: 40px;
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  text-decoration: none;
-  transition: color var(--transition);
-}
-
-.backLink:hover {
-  color: var(--text-secondary);
-}
-
-/* ─── Responsive ───────────────────────────────────────────────────────────── */
-
-@media (max-width: 600px) {
-  .heroTitle { font-size: 1.6rem; }
-  .grid { grid-template-columns: repeat(2, 1fr); }
+.cardSkeleton {
+  border-radius: var(--radius-md);
+  aspect-ratio: 16 / 9;
+  background: var(--surface);
+  animation: shimmer 1.4s ease-in-out infinite;
 }

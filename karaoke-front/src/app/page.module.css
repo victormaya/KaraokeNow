@@ -65,6 +65,50 @@
   letter-spacing: -0.02em;
 }
 
+/* ─── Mode switcher (Karaokê / Bateria) ─────────────────────────── */
+.modeRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 16px;
+}
+
+.modeBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--transition), color var(--transition), border-color var(--transition);
+}
+
+.modeBtn:hover {
+  background: var(--surface);
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.modeBtnActive {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  cursor: default;
+  box-shadow: 0 0 16px rgba(200, 80, 192, 0.3);
+}
+
+.modeBtnActive:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 .tagline {
   font-size: 1rem;
   color: var(--text-secondary);

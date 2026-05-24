@@ -137,6 +137,15 @@ function HomeContent() {
           Karaokê sem limites.
         </p>
         <SearchBar onSearch={handleSearch} loading={searching} defaultValue={query} />
+
+        <div className={styles.modeRow}>
+          <button className={`${styles.modeBtn} ${styles.modeBtnActive}`}>
+            🎤 Karaokê
+          </button>
+          <button className={styles.modeBtn} onClick={() => router.push("/drums")}>
+            🥁 Bateria
+          </button>
+        </div>
       </header>
 
       <main className={styles.main}>
