@@ -52,6 +52,10 @@ jobs: dict[str, dict] = {}
 # Dedup in-flight: video_id -> job_id
 video_to_job: dict[str, str] = {}
 
+# Drum job stores
+drum_jobs: dict[str, dict] = {}
+video_to_drum_job: dict[str, str] = {}
+
 # Rate limiting store: ip -> list of request timestamps
 _rate_store: dict[str, list[float]] = defaultdict(list)
 
@@ -171,6 +175,161 @@ def _base_ydl_opts() -> dict:
     if YTDLP_PROXY:
         opts["proxy"] = YTDLP_PROXY
     return opts
+
+
+def _detect_bpm(audio_path: str) -> Optional[float]:
+    """Estimate BPM via FFT-based autocorrelation of short-time energy onset envelope."""
+    try:
+        import numpy as np
+        import subprocess as _sp
+
+        sr = 22050
+        proc = _sp.run(
+            ["ffmpeg", "-i", audio_path, "-ar", str(sr), "-ac", "1", "-f", "f32le", "-"],
+            capture_output=True, timeout=60,
+        )
+        if proc.returncode != 0 or len(proc.stdout) < sr * 4:
+            return None
+
+        samples = np.frombuffer(proc.stdout, dtype=np.float32)
+        if len(samples) < sr * 5:
+            return None
+
+        hop, frame_len = 512, 1024
+        n_frames = (len(samples) - frame_len) // hop
+        idx = np.arange(frame_len) + np.arange(n_frames)[:, None] * hop
+        energy = np.sum(samples[idx] ** 2, axis=1)
+        onset = np.maximum(0.0, np.diff(energy))
+
+        n = len(onset)
+        fft = np.fft.rfft(onset, n=2 * n)
+        corr = np.fft.irfft(np.abs(fft) ** 2)[:n]
+
+        fps = sr / hop
+        lag_min = max(1, int(fps * 60 / 200))
+        lag_max = min(n - 1, int(fps * 60 / 60))
+        if lag_min >= lag_max:
+            return None
+
+        best_lag = int(np.argmax(corr[lag_min : lag_max + 1])) + lag_min
+        return round(float(fps * 60.0 / best_lag), 1)
+    except Exception:
+        return None
+
+
+def _drums_sync(job_id: str, video_id: str, title: str = "", channel: str = "", thumbnail: str = "") -> None:
+    """Download audio and remove drums via Demucs (stem='drums'). Saves no_drums.mp3 to cache."""
+    job_dir = TEMP_DIR / job_id
+    job_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        if not REPLICATE_API_TOKEN:
+            raise ValueError("REPLICATE_API_TOKEN environment variable not set.")
+
+        import subprocess
+        cache_entry = CACHE_DIR / video_id
+        cache_entry.mkdir(parents=True, exist_ok=True)
+
+        # Re-use existing original.mp3 if already cached from karaoke processing
+        existing_original = cache_entry / "original.mp3"
+        if existing_original.exists():
+            drum_jobs[job_id]["status"] = "separating"
+            audio_file = existing_original
+        else:
+            drum_jobs[job_id]["status"] = "downloading"
+            ydl_opts = {
+                **_base_ydl_opts(),
+                "outtmpl": str(job_dir / "original.%(ext)s"),
+                "format": "bestaudio/best",
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([f"https://www.youtube.com/watch?v={video_id}"])
+
+            candidates = [
+                p for p in job_dir.iterdir()
+                if p.stem == "original" and p.suffix not in (".part", ".ytdl")
+            ]
+            if not candidates:
+                raise FileNotFoundError("Download failed – no audio file produced.")
+            downloaded = candidates[0]
+
+            if downloaded.suffix.lower() == ".mp3":
+                shutil.copy2(downloaded, existing_original)
+            else:
+                subprocess.run(
+                    ["ffmpeg", "-y", "-i", str(downloaded), "-q:a", "2", "-map", "a", str(existing_original)],
+                    check=True, capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS,
+                )
+            downloaded.unlink(missing_ok=True)
+            audio_file = existing_original
+            drum_jobs[job_id]["status"] = "separating"
+
+        client = replicate.Client(api_token=REPLICATE_API_TOKEN)
+        output = None
+        for attempt in range(REPLICATE_MAX_RETRIES):
+            try:
+                with open(audio_file, "rb") as f:
+                    output = client.run(
+                        "cjwbw/demucs:25a173108cff36ef9f80f854c162d01df9e6528be175794b81158fa03836d953",
+                        input={
+                            "audio": f,
+                            "model_name": "mdx_q",
+                            "stem": "drums",
+                            "output_format": "mp3",
+                            "mp3_bitrate": 192,
+                            "shifts": 0,
+                            "overlap": 0.1,
+                        },
+                    )
+                break
+            except Exception as e:
+                err = str(e)
+                if "429" in err or "throttled" in err.lower():
+                    time.sleep(REPLICATE_RETRY_BASE_WAIT * (attempt + 1))
+                    continue
+                raise
+
+        if output is None:
+            raise RuntimeError(f"Replicate rate limit exceeded after {REPLICATE_MAX_RETRIES} retries.")
+
+        if not isinstance(output, dict) or not output.get("other"):
+            raise ValueError(f"Could not find no-drums track. Replicate output: {output}")
+
+        no_drums = cache_entry / "no_drums.mp3"
+        no_drums.write_bytes(output["other"].read())
+
+        bpm = _detect_bpm(str(audio_file))
+        if bpm is not None:
+            (cache_entry / "bpm.json").write_text(json.dumps({"bpm": bpm}))
+
+        shutil.rmtree(job_dir, ignore_errors=True)
+
+        if title or channel:
+            meta_file = cache_entry / "metadata.json"
+            if not meta_file.exists():
+                meta_file.write_text(json.dumps({
+                    "video_id": video_id,
+                    "title": title,
+                    "channel": channel,
+                    "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                    "processed_at": time.time(),
+                }))
+
+        drum_jobs[job_id] = {
+            "status": "done",
+            "audio_path": str(no_drums),
+            "bpm": bpm,
+            "error": None,
+        }
+
+    except Exception as exc:
+        drum_jobs[job_id] = {
+            "status": "error",
+            "audio_path": None,
+            "bpm": None,
+            "error": str(exc),
+        }
+        video_to_drum_job.pop(video_id, None)
 
 
 # ─────────────────────────────────────────────
@@ -785,6 +944,99 @@ async def get_trending(genre: str = "top"):
     except Exception:
         pass
     return JSONResponse({"results": []})
+
+
+@app.post("/api/drums/{video_id}")
+async def start_drums(video_id: str, request: Request, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
+    """Kick off drum-removal job and return a job_id to poll."""
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="Muitas requisições. Tente novamente em instantes.")
+    title     = (meta.title     or "") if meta else ""
+    channel   = (meta.channel   or "") if meta else ""
+    thumbnail = (meta.thumbnail or "") if meta else ""
+
+    cached = CACHE_DIR / video_id / "no_drums.mp3"
+    if cached.exists():
+        job_id = str(uuid.uuid4())
+        bpm_val: Optional[float] = None
+        bpm_file = CACHE_DIR / video_id / "bpm.json"
+        if bpm_file.exists():
+            try:
+                bpm_val = json.loads(bpm_file.read_text()).get("bpm")
+            except Exception:
+                pass
+        drum_jobs[job_id] = {"status": "done", "audio_path": str(cached), "bpm": bpm_val, "error": None}
+        if title or channel:
+            meta_file = CACHE_DIR / video_id / "metadata.json"
+            if not meta_file.exists():
+                meta_file.write_text(json.dumps({
+                    "video_id": video_id, "title": title, "channel": channel,
+                    "thumbnail": thumbnail or f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg",
+                    "processed_at": time.time(),
+                }))
+        return JSONResponse({"job_id": job_id, "status": "done", "bpm": bpm_val})
+
+    if video_id in video_to_drum_job:
+        existing = video_to_drum_job[video_id]
+        if existing in drum_jobs:
+            j = drum_jobs[existing]
+            return JSONResponse({"job_id": existing, "status": j["status"], "bpm": j.get("bpm")})
+
+    job_id = str(uuid.uuid4())
+    drum_jobs[job_id] = {"status": "pending", "audio_path": None, "bpm": None, "error": None}
+    video_to_drum_job[video_id] = job_id
+
+    async def _run():
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(executor, _drums_sync, job_id, video_id, title, channel, thumbnail)
+
+    background_tasks.add_task(_run)
+    return JSONResponse({"job_id": job_id, "status": "pending", "bpm": None})
+
+
+@app.get("/api/drums/job/{job_id}")
+async def get_drum_job(job_id: str):
+    """Poll drum job status."""
+    job = drum_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job não encontrado. O servidor pode ter sido reiniciado — tente processar a música novamente.")
+    return JSONResponse({
+        "job_id": job_id,
+        "status": job["status"],
+        "audio_url": f"/api/audio/no-drums/{job_id}" if job["status"] == "done" else None,
+        "bpm": job.get("bpm"),
+        "error": job.get("error"),
+    })
+
+
+@app.delete("/api/drums/job/{job_id}")
+async def cleanup_drum_job(job_id: str):
+    """Remove drum job from memory. Cache files are kept."""
+    job_dir = TEMP_DIR / job_id
+    if job_dir.exists():
+        shutil.rmtree(job_dir, ignore_errors=True)
+    drum_jobs.pop(job_id, None)
+    return JSONResponse({"deleted": True})
+
+
+@app.get("/api/audio/no-drums/{job_id}")
+async def stream_no_drums(job_id: str):
+    """Stream the no-drums instrumental MP3."""
+    job = drum_jobs.get(job_id)
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if job["status"] != "done":
+        raise HTTPException(status_code=400, detail=f"Audio not ready (status: {job['status']}).")
+    path = Path(job["audio_path"])
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Audio file missing.")
+    return FileResponse(
+        path=path,
+        media_type="audio/mpeg",
+        filename="no_drums.mp3",
+        headers={"Cache-Control": "no-cache, no-store"},
+    )
 
 
 @app.get("/health")

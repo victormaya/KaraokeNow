@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Link from "next/link";
 import styles from "./GlobalHeader.module.css";
 
 export default function GlobalHeader() {
@@ -9,7 +10,7 @@ export default function GlobalHeader() {
   const pathname = usePathname();
   const [query, setQuery] = useState("");
 
-  if (pathname === "/") return null;
+  if (pathname === "/" || pathname === "/drums") return null;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -21,6 +22,9 @@ export default function GlobalHeader() {
       <button className={styles.logo} onClick={() => router.push("/")}>
         🎤 <span>VOKAO</span>
       </button>
+      <Link href="/drums" className={styles.navLink}>
+        🥁 Bateria
+      </Link>
       <form className={styles.form} onSubmit={handleSubmit}>
         <input
           type="search"
