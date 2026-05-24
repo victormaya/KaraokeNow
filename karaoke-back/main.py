@@ -153,15 +153,20 @@ app.add_middleware(
 executor = ThreadPoolExecutor(max_workers=4)
 
 
+BGUTIL_URL = os.environ.get("BGUTIL_URL", "http://bgutil-provider:4416")
+
+
 def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
         "js_runtimes": {"node": {}},
         "remote_components": ["ejs:github"],
-        # Use Android + web clients — avoids "sign in to confirm" bot checks
-        # without requiring fresh cookies in most cases.
-        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "extractor_args": {
+            "youtube": {"player_client": ["android", "web"]},
+            "youtubepot-bgutilhttp": {"base_url": [BGUTIL_URL]},
+        },
+        "fetch_pot": ["always"],
     }
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 100:
         opts["cookiefile"] = str(COOKIES_FILE)

@@ -7,6 +7,9 @@ services:
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
       - YTDLP_PROXY=${YTDLP_PROXY:-}
+      - BGUTIL_URL=http://bgutil-provider:4416
+    depends_on:
+      - bgutil-provider
     volumes:
       - ./cookies.txt:/app/cookies.txt
       - karaoke_cache:/app/cache
@@ -28,6 +31,12 @@ services:
     depends_on:
       backend:
         condition: service_healthy
+    restart: unless-stopped
+
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    ports:
+      - "4416:4416"
     restart: unless-stopped
 
   cookie-refresher:
