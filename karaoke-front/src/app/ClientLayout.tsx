@@ -5,6 +5,7 @@ import { PlayerProvider, usePlayer } from "@/context/PlayerContext";
 import GlobalHeader from "@/components/GlobalHeader/GlobalHeader";
 import GlobalPlayer from "@/components/GlobalPlayer/GlobalPlayer";
 import PWAInstallBanner from "@/components/PWAInstallBanner/PWAInstallBanner";
+import Splash from "@/components/Splash/Splash";
 import styles from "./ClientLayout.module.css";
 
 function InnerLayout({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ function InnerLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
+      <Splash />
       {!isHome && <GlobalHeader />}
       <div className={[
         !isHome   ? styles.headerPad : "",
