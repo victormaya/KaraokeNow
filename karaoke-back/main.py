@@ -160,13 +160,11 @@ def _base_ydl_opts() -> dict:
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
-        "js_runtimes": {"node": {}},
-        "remote_components": ["ejs:github"],
         "extractor_args": {
-            "youtube": {"player_client": ["android", "web"]},
+            # tv_embedded simulates an embedded player — rarely flagged, no PO token needed
+            "youtube": {"player_client": ["tv_embedded", "android", "web"]},
             "youtubepot-bgutilhttp": {"base_url": [BGUTIL_URL]},
         },
-        "fetch_pot": ["always"],
     }
     if COOKIES_FILE.is_file() and COOKIES_FILE.stat().st_size > 100:
         opts["cookiefile"] = str(COOKIES_FILE)
