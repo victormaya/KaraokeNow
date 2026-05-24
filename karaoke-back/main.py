@@ -5,6 +5,7 @@ import shutil
 import tempfile
 import asyncio
 import time
+from collections import defaultdict
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
@@ -12,7 +13,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 import replicate
-from fastapi import FastAPI, HTTPException, BackgroundTasks
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -33,11 +34,37 @@ REPLICATE_API_TOKEN = os.environ.get("REPLICATE_API_TOKEN", "")
 COOKIES_FILE = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
 YTDLP_PROXY = os.environ.get("YTDLP_PROXY", "")
 
+FFMPEG_TIMEOUT_SECONDS = 120
+
+# Rate limiting: max process requests per IP per window
+RATE_LIMIT_MAX     = 10
+RATE_LIMIT_WINDOW  = 60  # seconds
+
+CACHE_MAX_AGE_DAYS = 30
+
+REPLICATE_MAX_RETRIES      = 5
+REPLICATE_RETRY_BASE_WAIT  = 15   # seconds; multiplied by (attempt + 1)
+OEMBED_POLITENESS_DELAY    = 0.3  # seconds between oEmbed requests
+
 # In-memory job store  { job_id: { status, audio_path, error } }
 jobs: dict[str, dict] = {}
 
 # Dedup in-flight: video_id -> job_id
 video_to_job: dict[str, str] = {}
+
+# Rate limiting store: ip -> list of request timestamps
+_rate_store: dict[str, list[float]] = defaultdict(list)
+
+
+def _check_rate_limit(ip: str) -> bool:
+    """Return True if the request is allowed, False if rate-limited."""
+    now = time.time()
+    timestamps = _rate_store[ip]
+    _rate_store[ip] = [t for t in timestamps if now - t < RATE_LIMIT_WINDOW]
+    if len(_rate_store[ip]) >= RATE_LIMIT_MAX:
+        return False
+    _rate_store[ip].append(now)
+    return True
 
 
 class SongMeta(BaseModel):
@@ -49,6 +76,22 @@ class SongMeta(BaseModel):
 # ─────────────────────────────────────────────
 # Metadata backfill (runs at startup)
 # ─────────────────────────────────────────────
+
+async def _evict_old_cache() -> None:
+    """Remove cache directories not accessed in CACHE_MAX_AGE_DAYS days."""
+    cutoff = time.time() - CACHE_MAX_AGE_DAYS * 86400
+    try:
+        for d in CACHE_DIR.iterdir():
+            if not d.is_dir():
+                continue
+            try:
+                if d.stat().st_atime < cutoff:
+                    shutil.rmtree(d, ignore_errors=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 
 async def _backfill_metadata_task() -> None:
     """Fetch title/channel/thumbnail for cached songs that have no metadata.json yet."""
@@ -77,7 +120,7 @@ async def _backfill_metadata_task() -> None:
                         (d / "metadata.json").write_text(json.dumps(meta))
                 except Exception:
                     pass
-                await asyncio.sleep(0.3)  # be polite to YouTube's oEmbed endpoint
+                await asyncio.sleep(OEMBED_POLITENESS_DELAY)
     except Exception:
         pass
 
@@ -85,7 +128,9 @@ async def _backfill_metadata_task() -> None:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     asyncio.create_task(_backfill_metadata_task())
+    asyncio.create_task(_evict_old_cache())
     yield
+    executor.shutdown(wait=False)
 
 
 # ─────────────────────────────────────────────
@@ -98,7 +143,7 @@ _cors_origins = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _cors_origins.split(",")],
-    allow_origin_regex=r"http://localhost:\d+",
+    allow_origin_regex=r"https?://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -175,11 +220,10 @@ def _search_sync(query: str, limit: int) -> list[dict]:
 
 
 
-def _direct_sync(job_id: str, video_id: str, title: str = "", channel: str = "", thumbnail: str = "") -> None:
+def _direct_sync(job_id: str, video_id: str, dedup_key: str, title: str = "", channel: str = "", thumbnail: str = "") -> None:
     """Download-only worker: saves audio without vocal separation."""
     job_dir = TEMP_DIR / job_id
     job_dir.mkdir(parents=True, exist_ok=True)
-    dedup_key = f"yt_{video_id}"
 
     try:
         jobs[job_id]["status"] = "downloading"
@@ -209,7 +253,7 @@ def _direct_sync(job_id: str, video_id: str, title: str = "", channel: str = "",
         else:
             subprocess.run(
                 ["ffmpeg", "-y", "-i", str(downloaded), "-q:a", "2", "-map", "a", str(audio_path)],
-                check=True, capture_output=True,
+                check=True, capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS,
             )
 
         if title or channel:
@@ -267,7 +311,7 @@ def _process_sync(job_id: str, video_id: str, title: str = "", channel: str = ""
 
         # Retry up to 5 times on 429 rate-limit responses
         output = None
-        for attempt in range(5):
+        for attempt in range(REPLICATE_MAX_RETRIES):
             try:
                 with open(downloaded, "rb") as f:
                     output = client.run(
@@ -286,13 +330,12 @@ def _process_sync(job_id: str, video_id: str, title: str = "", channel: str = ""
             except Exception as e:
                 err = str(e)
                 if "429" in err or "throttled" in err.lower():
-                    wait = 15 * (attempt + 1)  # 15s, 30s, 45s, 60s, 75s
-                    time.sleep(wait)
+                    time.sleep(REPLICATE_RETRY_BASE_WAIT * (attempt + 1))
                     continue
                 raise  # re-raise non-rate-limit errors
 
         if output is None:
-            raise RuntimeError("Replicate rate limit exceeded after 5 retries.")
+            raise RuntimeError(f"Replicate rate limit exceeded after {REPLICATE_MAX_RETRIES} retries.")
 
         # When stem="vocals", Demucs returns vocals + other (= everything except vocals)
         if not isinstance(output, dict) or not output.get("other"):
@@ -312,7 +355,7 @@ def _process_sync(job_id: str, video_id: str, title: str = "", channel: str = ""
         else:
             subprocess.run(
                 ["ffmpeg", "-y", "-i", str(downloaded), "-q:a", "2", "-map", "a", str(original)],
-                check=True, capture_output=True,
+                check=True, capture_output=True, timeout=FFMPEG_TIMEOUT_SECONDS,
             )
 
         downloaded.unlink(missing_ok=True)
@@ -365,8 +408,11 @@ async def search_karaoke(q: str):
 
 
 @app.post("/api/direct/{video_id}")
-async def start_direct(video_id: str, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
+async def start_direct(video_id: str, request: Request, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
     """Download audio only (no vocal separation) — for YouTube karaoke videos."""
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="Muitas requisições. Tente novamente em instantes.")
     dedup_key = f"yt_{video_id}"
     title     = (meta.title    or "") if meta else ""
     channel   = (meta.channel  or "") if meta else ""
@@ -397,7 +443,7 @@ async def start_direct(video_id: str, background_tasks: BackgroundTasks, meta: O
 
     async def _run():
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(executor, _direct_sync, job_id, video_id, title, channel, thumbnail)
+        await loop.run_in_executor(executor, _direct_sync, job_id, video_id, dedup_key, title, channel, thumbnail)
 
     background_tasks.add_task(_run)
     return JSONResponse({"job_id": job_id, "status": "pending"})
@@ -418,8 +464,11 @@ async def search_youtube(q: str, limit: int = 12):
 
 
 @app.post("/api/process/{video_id}")
-async def start_processing(video_id: str, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
+async def start_processing(video_id: str, request: Request, background_tasks: BackgroundTasks, meta: Optional[SongMeta] = None):
     """Kick off vocal-removal job and return a job_id to poll."""
+    ip = request.client.host if request.client else "unknown"
+    if not _check_rate_limit(ip):
+        raise HTTPException(status_code=429, detail="Muitas requisições. Tente novamente em instantes.")
     title     = (meta.title    or "") if meta else ""
     channel   = (meta.channel  or "") if meta else ""
     thumbnail = (meta.thumbnail or "") if meta else ""
@@ -463,7 +512,7 @@ async def get_job(job_id: str):
     """Poll job status."""
     job = jobs.get(job_id)
     if job is None:
-        raise HTTPException(status_code=404, detail="Job not found.")
+        raise HTTPException(status_code=404, detail="Job não encontrado. O servidor pode ter sido reiniciado — tente processar a música novamente.")
     return JSONResponse(
         {
             "job_id": job_id,

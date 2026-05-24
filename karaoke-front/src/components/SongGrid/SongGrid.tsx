@@ -10,6 +10,9 @@ interface Props {
   loading?: boolean;
 }
 
+// Module-level cache: avoids re-fetching IDs already checked this session
+const checkedIds = new Map<string, boolean>();
+
 function SkeletonCard() {
   return (
     <div className={styles.skeletonCard} aria-hidden>
@@ -25,10 +28,22 @@ export default function SongGrid({ songs, loading }: Props) {
 
   useEffect(() => {
     if (!songs.length) return;
-    const ids = songs.map(s => s.id).join(",");
-    fetch(`/api/processed?ids=${ids}`)
+
+    const unchecked = songs.map(s => s.id).filter(id => !checkedIds.has(id));
+
+    // All IDs already in cache — no fetch needed
+    if (!unchecked.length) {
+      setProcessedIds(new Set(songs.map(s => s.id).filter(id => checkedIds.get(id))));
+      return;
+    }
+
+    fetch(`/api/processed?ids=${unchecked.join(",")}`)
       .then(r => r.ok ? r.json() : { processed: [] })
-      .then(data => setProcessedIds(new Set(data.processed ?? [])))
+      .then(data => {
+        const processed = new Set<string>(data.processed ?? []);
+        unchecked.forEach(id => checkedIds.set(id, processed.has(id)));
+        setProcessedIds(new Set(songs.map(s => s.id).filter(id => checkedIds.get(id))));
+      })
       .catch(() => {});
   }, [songs]);
 

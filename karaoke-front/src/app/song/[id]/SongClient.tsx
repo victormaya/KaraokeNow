@@ -37,6 +37,10 @@ function parseSongMeta(rawTitle: string): { artist: string; songTitle: string } 
   return { artist: "", songTitle: s };
 }
 
+const POLLING_INTERVAL_MS = 2500;
+const READY_DELAY_MS      = 600;
+const SCROLL_DEBOUNCE_MS  = 80;
+
 const STATUS_LABEL: Record<string, string> = {
   pending:     "Iniciando processamento…",
   downloading: "Baixando áudio…",
@@ -63,7 +67,8 @@ export default function SongClient() {
   const [jobError,    setJobError]    = useState<string | null>(null);
   const [ready,       setReady]       = useState(direct || player.track?.id === videoId);
   const [isFirstTime, setIsFirstTime] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollingRef  = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Related songs ─────────────────────────────────────────────────────────
   const [relatedSongs, setRelatedSongs] = useState<RelatedSong[]>([]);
@@ -72,12 +77,9 @@ export default function SongClient() {
   const [lrcLines,      setLrcLines]      = useState<LrcLine[]>([]);
   const [lyrics,        setLyrics]        = useState<string | null>(null);
   const [lyricsLoading, setLyricsLoading] = useState(true);
+  const [lyricsError,   setLyricsError]   = useState(false);
   const lineRefs = useRef<(HTMLParagraphElement | null)[]>([]);
 
-  // ── Video background ─────────────────────────────────────────────────────
-  const iframeRef   = useRef<HTMLIFrameElement>(null);
-  const [iframeSrc, setIframeSrc] = useState<string | null>(null);
-  const prevTimeRef = useRef(0);
 
   // ── Share ─────────────────────────────────────────────────────────────────
   const [copied,         setCopied]         = useState(false);
@@ -101,7 +103,10 @@ export default function SongClient() {
     startJob();
     fetchLyrics();
     fetchRelatedSongs();
-    return () => clearPolling();
+    return () => {
+      clearPolling();
+      if (readyTimerRef.current) clearTimeout(readyTimerRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -118,7 +123,7 @@ export default function SongClient() {
       if (data.status === "done") {
         setJobStatus("done");
         setKaraokeUrl(`/api/audio/${data.job_id}`);
-        if (!direct) setTimeout(() => setReady(true), 600);
+        if (!direct) { readyTimerRef.current = setTimeout(() => setReady(true), READY_DELAY_MS); }
       } else {
         if (!direct) setIsFirstTime(true);
         startPolling(data.job_id);
@@ -133,20 +138,25 @@ export default function SongClient() {
     pollingRef.current = setInterval(async () => {
       try {
         const res = await fetch(`/api/job/${jobId}`);
+        if (res.status === 404) {
+          clearPolling();
+          setJobError("O servidor foi reiniciado durante o processamento. Por favor, tente novamente.");
+          return;
+        }
         if (!res.ok) return;
         const job = await res.json();
         setJobStatus(job.status);
         if (job.status === "done") {
           clearPolling();
           setKaraokeUrl(job.audio_url);
-          setTimeout(() => setReady(true), 600);
+          readyTimerRef.current = setTimeout(() => setReady(true), READY_DELAY_MS);
         }
         if (job.status === "error") {
           clearPolling();
           setJobError(job.error ?? "Erro desconhecido.");
         }
       } catch { /* keep polling */ }
-    }, 2500);
+    }, POLLING_INTERVAL_MS);
   }
 
   function clearPolling() {
@@ -155,16 +165,22 @@ export default function SongClient() {
 
   async function fetchLyrics() {
     setLyricsLoading(true);
+    setLyricsError(false);
     const { artist, songTitle } = parseSongMeta(title);
     try {
       const q = new URLSearchParams({ artist, title: songTitle });
       const res = await fetch(`/api/lyrics?${q}`);
       if (res.ok) {
         const data = await res.json();
-        if (data.lrc)  setLrcLines(parseLrc(data.lrc));
-        else           setLyrics(data.lyrics || null);
+        if (data.lrc)    setLrcLines(parseLrc(data.lrc));
+        else if (data.lyrics) setLyrics(data.lyrics);
+        else             setLyricsError(true);
+      } else {
+        setLyricsError(true);
       }
-    } catch { /* ignore */ }
+    } catch {
+      setLyricsError(true);
+    }
     setLyricsLoading(false);
   }
 
@@ -201,36 +217,6 @@ export default function SongClient() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, karaokeUrl]);
 
-  // ── Video background setup ────────────────────────────────────────────────
-  useEffect(() => {
-    if (!ready) return;
-    const origin = encodeURIComponent(window.location.origin);
-    setIframeSrc(
-      `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&rel=0&disablekb=1&iv_load_policy=3&modestbranding=1&enablejsapi=1&origin=${origin}`
-    );
-  }, [ready, videoId]);
-
-  // Start video when iframe is ready (never pause — avoids YouTube's pause overlay)
-  useEffect(() => {
-    if (!iframeSrc) return;
-    iframeRef.current?.contentWindow?.postMessage(
-      JSON.stringify({ event: "command", func: "playVideo", args: [] }),
-      "https://www.youtube-nocookie.com"
-    );
-  }, [iframeSrc]);
-
-  // Sync seek only on big jumps (user used the seek bar)
-  useEffect(() => {
-    if (!iframeSrc) return;
-    if (Math.abs(player.currentTime - prevTimeRef.current) > 5) {
-      iframeRef.current?.contentWindow?.postMessage(
-        JSON.stringify({ event: "command", func: "seekTo", args: [player.currentTime, true] }),
-        "https://www.youtube-nocookie.com"
-      );
-    }
-    prevTimeRef.current = player.currentTime;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [player.currentTime]);
 
   // ── Lyrics active line ─────────────────────────────────────────────────────
   const activeLineIdx = useMemo(() => {
@@ -243,8 +229,12 @@ export default function SongClient() {
     return idx;
   }, [lrcLines, player.currentTime]);
 
+  const scrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    lineRefs.current[activeLineIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      lineRefs.current[activeLineIdx]?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, SCROLL_DEBOUNCE_MS);
   }, [activeLineIdx]);
 
   async function copyLink() {
@@ -280,7 +270,7 @@ export default function SongClient() {
         <div className={styles.loadingContent}>
           {thumbnail && (
             <div className={styles.loadingThumb}>
-              <Image src={thumbnail} alt={title} fill unoptimized />
+              <Image src={thumbnail} alt={title} fill />
             </div>
           )}
           <h2 className={styles.loadingTitle}>{title || "Carregando…"}</h2>
@@ -321,7 +311,7 @@ export default function SongClient() {
               {relatedSongs.map(song => (
                 <button key={song.id} className={styles.ytKaraokeItem} onClick={() => goToSong(song)}>
                   <div className={styles.ytKaraokeThumb}>
-                    <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="48px" />
+                    <Image src={song.thumbnail} alt={song.title} fill sizes="48px" />
                   </div>
                   <div className={styles.ytKaraokeInfo}>
                     <span className={styles.ytKaraokeTitle}>{song.title}</span>
@@ -361,7 +351,7 @@ export default function SongClient() {
         <div className={styles.playerPanel}>
           <div className={styles.songInfo}>
             <div className={styles.songThumb}>
-              <Image src={thumbnail} alt={title} fill unoptimized />
+              <Image src={thumbnail} alt={title} fill />
             </div>
             <div className={styles.songMeta}>
               <h1 className={styles.songTitle}>{title}</h1>
@@ -377,7 +367,7 @@ export default function SongClient() {
               {relatedSongs.map(song => (
                 <button key={song.id} className={styles.ytAltItem} onClick={() => goToSong(song)}>
                   <div className={styles.ytAltThumb}>
-                    <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="44px" />
+                    <Image src={song.thumbnail} alt={song.title} fill sizes="44px" />
                   </div>
                   <div className={styles.ytAltInfo}>
                     <span className={styles.ytAltTitle}>{song.title}</span>
@@ -390,26 +380,34 @@ export default function SongClient() {
           )}
         </div>
 
-        {/* ── RIGHT: Lyrics (with video behind) ───────────────────────── */}
+        {/* ── RIGHT: Lyrics ────────────────────────────────────────────── */}
         <div className={styles.lyricsWrapper}>
-          <div className={styles.videoBgLayer}>
-            {iframeSrc && (
-              <iframe
-                ref={iframeRef}
-                src={iframeSrc}
-                className={styles.videoBgIframe}
-                allow="autoplay; encrypted-media"
-                title="background"
-              />
-            )}
-            <div className={styles.videoOverlay} />
-          </div>
           <div className={styles.lyricsPanel}>
           <h2 className={styles.lyricsHeading}>Letra</h2>
           {lyricsLoading ? (
             <div className={styles.lyricsPlaceholder}>
               <span className={styles.spinner} />
               <span>Carregando letra…</span>
+            </div>
+          ) : lyricsError ? (
+            <div className={styles.lyricsEmpty}>
+              <p>Não foi possível carregar a letra. Tente buscar manualmente:</p>
+              <a
+                className={styles.lyricsSearchLink}
+                href={`https://www.letras.mus.br/pesquisar/?q=${encodeURIComponent(title)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Buscar no Letras.mus.br →
+              </a>
+              <a
+                className={styles.lyricsSearchLink}
+                href={`https://www.google.com/search?q=${encodeURIComponent(title + " letra")}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Buscar no Google →
+              </a>
             </div>
           ) : lrcLines.length > 0 ? (
             <div className={styles.lyricsLines}>

@@ -45,6 +45,8 @@ function HomeContent() {
   const [activeTab,    setActiveTab]    = useState<TabId>("top");
   const [tabTracks,    setTabTracks]    = useState<TrendingTrack[]>([]);
   const [tabLoading,   setTabLoading]   = useState(true);
+  // LRU cache capped at the total number of genre tabs (one entry each)
+  const TAB_CACHE_MAX = GENRE_TABS.length;
   const tabCache = useRef<Map<TabId, TrendingTrack[]>>(new Map());
 
   // Fetch Apple Music chart for active tab
@@ -60,6 +62,9 @@ function HomeContent() {
       .then(r => r.json())
       .then(d => {
         const results = d.results ?? [];
+        if (tabCache.current.size >= TAB_CACHE_MAX) {
+          tabCache.current.delete(tabCache.current.keys().next().value!);
+        }
         tabCache.current.set(activeTab, results);
         setTabTracks(results);
       })
@@ -180,7 +185,7 @@ function HomeContent() {
                   >
                     <div className={styles.trendingRank} data-top={i < 3 ? "true" : undefined}>{i + 1}</div>
                     <div className={styles.trendingArt}>
-                      <Image src={track.art} alt={track.name} fill unoptimized sizes="44px" />
+                      <Image src={track.art} alt={track.name} fill sizes="44px" />
                     </div>
                     <div className={styles.trendingInfo}>
                       <span className={styles.trendingName}>{trunc(track.name, 30)}</span>
@@ -215,7 +220,7 @@ function HomeContent() {
                         onClick={() => goDirectKaraoke(song)}
                       >
                         <div className={styles.ytThumb}>
-                          <Image src={song.thumbnail} alt={song.title} fill unoptimized sizes="120px" />
+                          <Image src={song.thumbnail} alt={song.title} fill sizes="120px" />
                           <div className={styles.ytPlayOverlay} aria-hidden>
                             <svg width="32" height="32" viewBox="0 0 24 24">
                               <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.6)" />

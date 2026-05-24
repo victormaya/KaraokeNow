@@ -206,45 +206,10 @@
   position: relative;
 }
 
-/* ─── Video background (scoped to lyricsWrapper) ────────────────────────── */
-
-/* Wrapper = the 2nd grid column; clips the video to exactly this area */
 .lyricsWrapper {
-  position: relative;
-  overflow: hidden;
   min-height: 0;
   display: flex;
   flex-direction: column;
-}
-
-.videoBgLayer {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background: #000;
-  pointer-events: none;
-}
-
-/* object-fit: cover for iframes inside the lyrics column */
-.videoBgIframe {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  /* Oversize relative to the wrapper — clipped by overflow:hidden above */
-  width: 100vw;
-  height: 56.25vw;
-  min-height: 100%;
-  min-width: 177.78vh;
-  border: none;
-  pointer-events: none;
-}
-
-.videoOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(5, 5, 15, 0.80);
 }
 
 .splitLayout {

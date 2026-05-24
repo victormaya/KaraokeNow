@@ -1,9 +1,10 @@
 "use client";
 
 import {
-  createContext, useContext, useRef, useState, useCallback,
+  createContext, useContext, useRef, useState, useCallback, useEffect,
   type RefObject,
 } from "react";
+import type { PitchShift } from "tone";
 
 export interface Track {
   id: string;
@@ -50,12 +51,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [hasOriginal,  setHasOriginal]  = useState(false);
   const [karaokeMode,  setKaraokeMode]  = useState(true);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const karaokePSRef    = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const originalPSRef   = useRef<any>(null);
+  const karaokePSRef  = useRef<PitchShift | null>(null);
+  const originalPSRef = useRef<PitchShift | null>(null);
   const toneReady       = useRef(false);
   const pitchRestoreRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Pre-import Tone.js on mount so the module is cached when the user first
+  // clicks a pitch button, eliminating the ~500 ms cold-import delay.
+  useEffect(() => { import("tone").catch(() => {}); }, []);
 
   const setTrack = useCallback((newTrack: Track, audioUrl: string) => {
     if (audioRef.current) {
