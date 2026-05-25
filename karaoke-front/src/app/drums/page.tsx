@@ -24,11 +24,13 @@ export const metadata: Metadata = {
     description: "Remova a bateria de qualquer música do YouTube com IA e pratique no seu ritmo.",
     url:         `${BASE_URL}/drums`,
     siteName:    "VOKAO",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "VOKAO Bateria Play Along" }],
   },
   twitter: {
     card:        "summary_large_image",
     title:       "🥁 Bateria Play Along — VOKAO",
     description: "Remova a bateria de qualquer música com IA. Grátis!",
+    images:      ["/opengraph-image"],
   },
 };
 
