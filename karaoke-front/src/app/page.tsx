@@ -132,10 +132,10 @@ function HomeContent() {
           <div className={styles.logoIcon}>🎤</div>
           <span className={styles.logoText}>VOKAO</span>
         </button>
-        <p className={styles.tagline}>
-          Busque qualquer música do YouTube e remova os vocais instantaneamente.
-          Karaokê sem limites.
-        </p>
+        <h1 className={styles.tagline}>
+          Remova os vocais de qualquer música do YouTube com IA —
+          karaokê online grátis, sem cadastro.
+        </h1>
         <SearchBar onSearch={handleSearch} loading={searching} defaultValue={query} />
 
         <div className={styles.modeRow}>
@@ -261,6 +261,25 @@ function HomeContent() {
           </>
         )}
       </main>
+      <section className={styles.features} aria-label="Como funciona">
+        <div className={styles.featuresGrid}>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>🎤</span>
+            <p className={styles.featureTitle}>Karaokê sem vocal</p>
+            <p className={styles.featureDesc}>Remove os vocais de qualquer música do YouTube com IA. Backing track instantâneo para cantar.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>🎵</span>
+            <p className={styles.featureTitle}>Letras sincronizadas</p>
+            <p className={styles.featureDesc}>Acompanhe a letra em tempo real enquanto canta. Altere o tom para a sua voz, sem perder o ritmo.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>⚡</span>
+            <p className={styles.featureTitle}>Grátis, sem cadastro</p>
+            <p className={styles.featureDesc}>Karaokê online grátis. Sem download, sem cadastro, funciona direto no navegador em qualquer dispositivo.</p>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );

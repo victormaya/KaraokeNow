@@ -125,9 +125,9 @@ export default function DrumsClient() {
           <div className={styles.logoIcon}>🎤</div>
           <span className={styles.logoText}>VOKAO</span>
         </button>
-        <p className={styles.tagline}>
-          Remove a bateria de qualquer música com IA. Pratique no seu ritmo.
-        </p>
+        <h1 className={styles.tagline}>
+          Drumless track com IA — play along de bateria, remova a bateria de qualquer música, grátis.
+        </h1>
         <SearchBar onSearch={handleSearch} loading={searching} defaultValue={query} />
 
         <div className={styles.modeRow}>
@@ -240,6 +240,25 @@ export default function DrumsClient() {
           </>
         )}
       </main>
+      <section className={styles.features} aria-label="Como funciona">
+        <div className={styles.featuresGrid}>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>🥁</span>
+            <p className={styles.featureTitle}>Drumless track com IA</p>
+            <p className={styles.featureDesc}>Remove a bateria de qualquer música do YouTube. Pista sem bateria pronta para play along, grátis.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>🎸</span>
+            <p className={styles.featureTitle}>Play along de bateria</p>
+            <p className={styles.featureDesc}>Pratique bateria com suas músicas favoritas. Backing track com bateria removida por inteligência artificial.</p>
+          </div>
+          <div className={styles.featureCard}>
+            <span className={styles.featureIcon}>🎚️</span>
+            <p className={styles.featureTitle}>Controle de BPM e velocidade</p>
+            <p className={styles.featureDesc}>Ajuste velocidade e BPM sem alterar o tom. Perfeito para iniciantes e bateristas avançados.</p>
+          </div>
+        </div>
+      </section>
       <Footer />
     </div>
   );
