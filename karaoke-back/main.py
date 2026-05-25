@@ -714,6 +714,33 @@ async def get_cached_songs():
     return JSONResponse({"songs": songs})
 
 
+@app.get("/api/cached-drums")
+async def get_cached_drums():
+    """List all songs that have no_drums.mp3 cached (for sitemap)."""
+    songs = []
+    try:
+        for d in CACHE_DIR.iterdir():
+            if not d.is_dir() or not (d / "no_drums.mp3").exists():
+                continue
+            meta_file = d / "metadata.json"
+            if not meta_file.exists():
+                continue
+            try:
+                meta = json.loads(meta_file.read_text())
+                bpm_file = d / "bpm.json"
+                if bpm_file.exists():
+                    try:
+                        meta["bpm"] = json.loads(bpm_file.read_text()).get("bpm")
+                    except Exception:
+                        pass
+                songs.append(meta)
+            except Exception:
+                pass
+    except Exception:
+        pass
+    return JSONResponse({"songs": songs})
+
+
 @app.get("/api/processed")
 async def check_processed(ids: str = ""):
     """Return which video IDs already have AI-processed instrumental cached."""
