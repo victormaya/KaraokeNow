@@ -751,6 +751,16 @@ async def check_processed(ids: str = ""):
     return JSONResponse({"processed": processed})
 
 
+@app.get("/api/processed-drums")
+async def check_processed_drums(ids: str = ""):
+    """Return which video IDs already have no_drums.mp3 cached."""
+    if not ids:
+        return JSONResponse({"processed": []})
+    video_ids = [v.strip() for v in ids.split(",") if v.strip()]
+    processed = [vid for vid in video_ids if (CACHE_DIR / vid / "no_drums.mp3").exists()]
+    return JSONResponse({"processed": processed})
+
+
 @app.get("/api/audio/{job_id}")
 async def stream_audio(job_id: str):
     """Return the processed instrumental as an audio file."""

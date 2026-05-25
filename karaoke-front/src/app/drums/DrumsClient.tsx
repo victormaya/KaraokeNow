@@ -25,6 +25,9 @@ type TabId = typeof GENRE_TABS[number]["id"];
 
 const trunc = (s: string, n: number) => s.length > n ? s.slice(0, n) + "…" : s;
 
+// Session-level cache — avoids re-fetching IDs already checked
+const checkedDrumIds = new Map<string, boolean>();
+
 export default function DrumsClient() {
   const router       = useRouter();
   const searchParams = useSearchParams();
@@ -35,9 +38,10 @@ export default function DrumsClient() {
     return () => { delete document.documentElement.dataset.theme; };
   }, []);
 
-  const [songs,       setSongs]       = useState<Song[]>([]);
-  const [searching,   setSearching]   = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
+  const [songs,        setSongs]        = useState<Song[]>([]);
+  const [searching,    setSearching]    = useState(false);
+  const [searchError,  setSearchError]  = useState<string | null>(null);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
 
   const [activeTab,  setActiveTab]  = useState<TabId>("top");
   const [tabTracks,  setTabTracks]  = useState<TrendingTrack[]>([]);
@@ -83,6 +87,23 @@ export default function DrumsClient() {
       .finally(() => setSearching(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
+
+  useEffect(() => {
+    if (!songs.length) return;
+    const unchecked = songs.map(s => s.id).filter(id => !checkedDrumIds.has(id));
+    if (!unchecked.length) {
+      setProcessedIds(new Set(songs.map(s => s.id).filter(id => checkedDrumIds.get(id))));
+      return;
+    }
+    fetch(`/api/processed-drums?ids=${unchecked.join(",")}`)
+      .then(r => r.ok ? r.json() : { processed: [] })
+      .then(data => {
+        const processed = new Set<string>(data.processed ?? []);
+        unchecked.forEach(id => checkedDrumIds.set(id, processed.has(id)));
+        setProcessedIds(new Set(songs.map(s => s.id).filter(id => checkedDrumIds.get(id))));
+      })
+      .catch(() => {});
+  }, [songs]);
 
   const handleSearch = useCallback((q: string) => {
     router.push(`/drums?q=${encodeURIComponent(q.trim())}`);
@@ -191,6 +212,9 @@ export default function DrumsClient() {
                     <div className={styles.thumb}>
                       <Image src={song.thumbnail} alt={song.title} fill sizes="180px" />
                       <span className={styles.duration}>{song.duration}</span>
+                      {processedIds.has(song.id) && (
+                        <span className={styles.processedBadge} title="Bateria já processada — sem espera!">🥁 Pronto</span>
+                      )}
                       <div className={styles.playOverlay} aria-hidden>
                         <svg width="40" height="40" viewBox="0 0 24 24">
                           <circle cx="12" cy="12" r="12" fill="rgba(0,0,0,0.55)" />
