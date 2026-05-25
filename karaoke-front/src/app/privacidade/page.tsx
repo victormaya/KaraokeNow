@@ -3,9 +3,12 @@ import Link from "next/link";
 import Footer from "@/components/Footer/Footer";
 import styles from "./page.module.css";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://vokao.com.br";
+
 export const metadata: Metadata = {
   title: "Política de Privacidade",
   description: "Política de Privacidade do VOKAO — como coletamos, usamos e protegemos seus dados.",
+  alternates: { canonical: `${BASE_URL}/privacidade` },
 };
 
 export default function PrivacidadePage() {

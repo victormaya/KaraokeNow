@@ -3,9 +3,12 @@ import Link from "next/link";
 import Footer from "@/components/Footer/Footer";
 import styles from "./page.module.css";
 
+const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL ?? "https://vokao.com.br";
+
 export const metadata: Metadata = {
   title: "Termos de Uso",
   description: "Termos de Uso do VOKAO — condições para utilização do serviço.",
+  alternates: { canonical: `${BASE_URL}/termos` },
 };
 
 export default function TermosPage() {
