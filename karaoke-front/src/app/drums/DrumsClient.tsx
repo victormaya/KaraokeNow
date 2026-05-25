@@ -126,7 +126,7 @@ export default function DrumsClient() {
           <span className={styles.logoText}>VOKAO</span>
         </button>
         <h1 className={styles.tagline}>
-          Drumless track com IA — play along de bateria, remova a bateria de qualquer música, grátis.
+          Play along de bateria — remove a bateria de qualquer música do YouTube com IA.
         </h1>
         <SearchBar onSearch={handleSearch} loading={searching} defaultValue={query} />
 
