@@ -8,8 +8,7 @@ import os
 import sys
 import time
 import smtplib
-import urllib.request
-import urllib.error
+import yt_dlp
 from email.mime.text import MIMEText
 from pathlib import Path
 
@@ -20,32 +19,8 @@ GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
 YTDLP_PROXY        = os.environ.get("YTDLP_PROXY", "")
 ALERT_FLAG         = Path("/app/cookie_alert_sent.flag")
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) "
-    "Gecko/20100101 Firefox/126.0"
-)
+TEST_VIDEO = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
-
-def parse_netscape(path: Path) -> list[dict]:
-    cookies = []
-    for line in path.read_text(errors="ignore").splitlines():
-        if line.startswith("#") or not line.strip():
-            continue
-        parts = line.strip().split("\t")
-        if len(parts) != 7:
-            continue
-        domain, _, path_, secure, expires, name, value = parts
-        try:
-            exp = int(expires)
-        except ValueError:
-            exp = -1
-        cookies.append({
-            "domain": domain, "path": path_,
-            "secure": secure == "TRUE",
-            "expires": exp if exp > 0 else -1,
-            "name": name, "value": value,
-        })
-    return cookies
 
 
 def _send_alert() -> None:
@@ -85,56 +60,29 @@ def _check_cookies() -> bool:
         print("[check] Arquivo de cookies ausente ou vazio.")
         return False
 
-    cookies = parse_netscape(COOKIES_FILE)
-    now = time.time()
-
-    # Quick check: key auth cookies present and not timestamp-expired
-    yt_cookies = {c["name"]: c for c in cookies if "youtube.com" in c.get("domain", "")}
-    for name in ("SID", "HSID", "SSID"):
-        c = yt_cookies.get(name)
-        if not c:
-            print(f"[check] Cookie '{name}' ausente.")
-            return False
-        if 0 < c.get("expires", -1) < now:
-            print(f"[check] Cookie '{name}' expirado.")
-            return False
-
-    # HTTP check: lightweight request to verify server-side validity
-    cookie_header = "; ".join(
-        f"{c['name']}={c['value']}"
-        for c in cookies
-        if "youtube.com" in c.get("domain", "")
-    )
+    opts: dict = {
+        "quiet": True,
+        "no_warnings": True,
+        "cookiefile": str(COOKIES_FILE),
+    }
+    if YTDLP_PROXY:
+        opts["proxy"] = YTDLP_PROXY
 
     try:
-        if YTDLP_PROXY:
-            opener = urllib.request.build_opener(
-                urllib.request.ProxyHandler({"http": YTDLP_PROXY, "https": YTDLP_PROXY})
-            )
-        else:
-            opener = urllib.request.build_opener()
-
-        req = urllib.request.Request(
-            "https://www.youtube.com/",
-            headers={
-                "User-Agent": USER_AGENT,
-                "Cookie": cookie_header,
-                "Accept-Language": "pt-BR,pt;q=0.9",
-            }
-        )
-        with opener.open(req, timeout=15) as resp:
-            chunk = resp.read(16384).decode("utf-8", errors="ignore")
-            signed_in = (
-                '"SIGNED_IN"' in chunk
-                or '"isSignedIn":true' in chunk
-                or '"isSignedIn": true' in chunk
-            )
-            if not signed_in:
-                print("[check] YouTube responde sem sessão autenticada.")
-            return signed_in
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            ydl.extract_info(TEST_VIDEO, download=False)
+        print("[check] yt-dlp OK — cookies válidas.")
+        return True
+    except yt_dlp.utils.DownloadError as e:
+        err = str(e).lower()
+        if "sign in" in err or "bot" in err or "confirm" in err:
+            print(f"[check] yt-dlp: sessão expirada — {e}")
+            return False
+        # Outros erros (rede, vídeo indisponível) — não alertar
+        print(f"[check] yt-dlp erro não relacionado a auth: {e} — assumindo válido.")
+        return True
     except Exception as exc:
-        # On transient network errors, assume valid to avoid false alerts
-        print(f"[check] Erro de rede: {exc} — assumindo válido.")
+        print(f"[check] Erro inesperado: {exc} — assumindo válido.")
         return True
 
 
