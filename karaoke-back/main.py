@@ -778,7 +778,7 @@ async def stream_audio(job_id: str):
         path=path,
         media_type="audio/mpeg",
         filename="instrumental.mp3",
-        headers={"Cache-Control": "no-cache, no-store"},
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
@@ -792,7 +792,7 @@ async def stream_original(video_id: str):
         path=path,
         media_type="audio/mpeg",
         filename="original.mp3",
-        headers={"Cache-Control": "no-cache, no-store"},
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
@@ -1072,7 +1072,7 @@ async def stream_no_drums(job_id: str):
         path=path,
         media_type="audio/mpeg",
         filename="no_drums.mp3",
-        headers={"Cache-Control": "no-cache, no-store"},
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 

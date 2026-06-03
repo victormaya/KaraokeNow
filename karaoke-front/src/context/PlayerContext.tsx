@@ -178,7 +178,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         onError={() => setAudioLoading(false)}
         preload="auto"
       />
-      <audio ref={originalRef} muted preload="auto" />
+      <audio ref={originalRef} muted preload="none" />
       {children}
     </Ctx.Provider>
   );
