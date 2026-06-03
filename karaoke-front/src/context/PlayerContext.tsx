@@ -173,7 +173,6 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         onEnded={() => setPlaying(false)}
         onTimeUpdate={() => { if (audioRef.current) setCurrentTime(audioRef.current.currentTime); }}
         onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
-        onWaiting={() => setAudioLoading(true)}
         onCanPlay={() => setAudioLoading(false)}
         onLoadedData={() => setAudioLoading(false)}
         onError={() => setAudioLoading(false)}
