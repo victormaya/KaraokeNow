@@ -13,15 +13,52 @@ import os
 import sys
 import time
 import urllib.parse
+import smtplib
+from email.mime.text import MIMEText
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 COOKIES_FILE       = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
-REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(48 * 3600)))
+REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(24 * 3600)))
 GOOGLE_EMAIL       = os.environ.get("GOOGLE_EMAIL", "")
 GOOGLE_PASSWORD    = os.environ.get("GOOGLE_PASSWORD", "")
 YTDLP_PROXY        = os.environ.get("YTDLP_PROXY", "")
+NOTIFY_EMAIL       = os.environ.get("NOTIFY_EMAIL", "")
+GMAIL_APP_PASSWORD = os.environ.get("GMAIL_APP_PASSWORD", "")
+ALERT_FLAG         = Path("/app/cookie_alert_sent.flag")
+
+
+def _send_alert() -> None:
+    if not NOTIFY_EMAIL or not GMAIL_APP_PASSWORD:
+        print("[alert] Email não configurado — pulando notificação.")
+        return
+    if ALERT_FLAG.exists():
+        print("[alert] Email já enviado anteriormente — aguardando renovação manual.")
+        return
+    try:
+        body = (
+            "As cookies do YouTube expiraram no VOKAO.\n\n"
+            "Para renovar (2 minutos):\n"
+            "1. Abra o Chrome logado com sua conta Google\n"
+            "2. Exporte as cookies do youtube.com com a extensão 'Get cookies.txt LOCALLY'\n"
+            "3. Execute no terminal:\n\n"
+            "   scp cookies.txt root@46.62.148.54:/app/karaoke/cookies.txt\n"
+            "   ssh root@46.62.148.54 'cd /app/karaoke && docker compose restart backend'\n\n"
+            "Após renovar, o monitoramento retoma automaticamente."
+        )
+        msg = MIMEText(body)
+        msg["Subject"] = "⚠️ VOKAO — Cookies do YouTube expiraram"
+        msg["From"]    = NOTIFY_EMAIL
+        msg["To"]      = NOTIFY_EMAIL
+        with smtplib.SMTP("smtp.gmail.com", 587) as server:
+            server.starttls()
+            server.login(NOTIFY_EMAIL, GMAIL_APP_PASSWORD)
+            server.send_message(msg)
+        ALERT_FLAG.touch()
+        print(f"[alert] Email enviado para {NOTIFY_EMAIL}")
+    except Exception as exc:
+        print(f"[alert] Falha ao enviar email: {exc}")
 
 
 def _playwright_proxy() -> dict | None:
@@ -194,16 +231,19 @@ def refresh_once() -> bool:
             if signed_out:
                 fresh_cookies = _do_login(browser)
                 if not fresh_cookies:
-                    print("[refresh] Signed out and re-login unavailable — keeping old cookies.")
+                    print("[refresh] Sessão expirada e re-login automático falhou.")
+                    _send_alert()
                     browser.close()
                     return False
                 export_netscape(fresh_cookies, COOKIES_FILE)
+                ALERT_FLAG.unlink(missing_ok=True)
                 print(f"[refresh] OK (re-login) — {len(fresh_cookies)} cookies saved.")
             else:
                 # Session still valid — just re-export the refreshed cookies
                 refreshed = ctx.cookies(["https://www.youtube.com", "https://.youtube.com"])
                 if refreshed:
                     export_netscape(refreshed, COOKIES_FILE)
+                    ALERT_FLAG.unlink(missing_ok=True)
                     print(f"[refresh] OK — {len(refreshed)} cookies saved to {COOKIES_FILE}")
                 else:
                     print("[refresh] No cookies returned — keeping original file.")

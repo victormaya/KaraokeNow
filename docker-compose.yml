@@ -54,6 +54,8 @@ services:
       - GOOGLE_EMAIL=${GOOGLE_EMAIL:-}
       - GOOGLE_PASSWORD=${GOOGLE_PASSWORD:-}
       - YTDLP_PROXY=${YTDLP_PROXY:-}
+      - NOTIFY_EMAIL=${NOTIFY_EMAIL:-}
+      - GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     depends_on:
