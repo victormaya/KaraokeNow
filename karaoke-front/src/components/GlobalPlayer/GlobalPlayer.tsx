@@ -88,6 +88,19 @@ export default function GlobalPlayer() {
             </div>
           )}
 
+          {/* Skip backward 10s */}
+          <button
+            className={styles.skipBtn}
+            onClick={() => seek(Math.max(0, currentTime - 10))}
+            disabled={audioLoading}
+            aria-label="Recuar 10 segundos"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/>
+            </svg>
+            <span className={styles.skipNum}>10</span>
+          </button>
+
           {/* Play / Pause */}
           <button
             className={styles.playBtn}
@@ -107,6 +120,18 @@ export default function GlobalPlayer() {
                 <polygon points="5,3 19,12 5,21" />
               </svg>
             )}
+          </button>
+          {/* Skip forward 10s */}
+          <button
+            className={styles.skipBtn}
+            onClick={() => seek(Math.min(duration || Infinity, currentTime + 10))}
+            disabled={audioLoading}
+            aria-label="Avançar 10 segundos"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18 13c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6v4l5-5-5-5v4c-4.42 0-8 3.58-8 8s3.58 8 8 8 8-3.58 8-8h-2z"/>
+            </svg>
+            <span className={styles.skipNum}>10</span>
           </button>
         </div>
       </div>

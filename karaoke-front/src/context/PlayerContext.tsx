@@ -175,6 +175,8 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
         onWaiting={() => setAudioLoading(true)}
         onCanPlay={() => setAudioLoading(false)}
+        onLoadedData={() => setAudioLoading(false)}
+        onError={() => setAudioLoading(false)}
         preload="auto"
       />
       <audio ref={originalRef} muted preload="auto" />

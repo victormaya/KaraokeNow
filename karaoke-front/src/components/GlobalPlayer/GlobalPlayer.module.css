@@ -137,6 +137,35 @@
   margin-left: 1px;
 }
 
+/* Skip ±10s buttons */
+.skipBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  cursor: pointer;
+  gap: 1px;
+  padding: 5px 4px 4px;
+  transition: color var(--transition), border-color var(--transition);
+  flex-shrink: 0;
+}
+
+.skipBtn:hover { color: var(--accent); border-color: var(--accent); }
+.skipBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.skipNum {
+  font-size: 0.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+}
+
 /* Play button */
 .playBtn {
   display: flex;
