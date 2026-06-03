@@ -13,6 +13,7 @@ services:
     volumes:
       - ./cookies.txt:/app/cookies.txt
       - karaoke_cache:/app/cache
+      - ytdlp_oauth:/root/.cache/yt-dlp
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -61,3 +62,4 @@ services:
 
 volumes:
   karaoke_cache:
+  ytdlp_oauth:
