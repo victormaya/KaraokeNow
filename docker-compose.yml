@@ -13,7 +13,6 @@ services:
     volumes:
       - ./cookies.txt:/app/cookies.txt
       - karaoke_cache:/app/cache
-      - ytdlp_oauth:/root/.cache/yt-dlp
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
@@ -54,6 +53,7 @@ services:
       - COOKIE_REFRESH_INTERVAL=${COOKIE_REFRESH_INTERVAL:-172800}
       - GOOGLE_EMAIL=${GOOGLE_EMAIL:-}
       - GOOGLE_PASSWORD=${GOOGLE_PASSWORD:-}
+      - YTDLP_PROXY=${YTDLP_PROXY:-}
       - PYTHONUNBUFFERED=1
     restart: unless-stopped
     depends_on:
@@ -62,4 +62,3 @@ services:
 
 volumes:
   karaoke_cache:
-  ytdlp_oauth:

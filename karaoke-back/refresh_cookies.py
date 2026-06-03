@@ -12,6 +12,7 @@ the script will attempt a full re-login automatically.
 import os
 import sys
 import time
+import urllib.parse
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
@@ -20,6 +21,21 @@ COOKIES_FILE       = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
 REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(48 * 3600)))
 GOOGLE_EMAIL       = os.environ.get("GOOGLE_EMAIL", "")
 GOOGLE_PASSWORD    = os.environ.get("GOOGLE_PASSWORD", "")
+YTDLP_PROXY        = os.environ.get("YTDLP_PROXY", "")
+
+
+def _playwright_proxy() -> dict | None:
+    """Parse YTDLP_PROXY (http://user:pass@host:port) into Playwright proxy dict."""
+    if not YTDLP_PROXY:
+        return None
+    p = urllib.parse.urlparse(YTDLP_PROXY)
+    proxy: dict = {"server": f"{p.scheme}://{p.hostname}:{p.port}"}
+    if p.username:
+        proxy["username"] = urllib.parse.unquote(p.username)
+    if p.password:
+        proxy["password"] = urllib.parse.unquote(p.password)
+    print(f"[proxy] Using {p.scheme}://{p.hostname}:{p.port}")
+    return proxy
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) "
@@ -77,10 +93,12 @@ def _do_login(browser) -> list[dict] | None:
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         return None
     print("Attempting automatic re-login with fresh session…")
+    proxy = _playwright_proxy()
     ctx = browser.new_context(
         user_agent=USER_AGENT,
         viewport={"width": 1280, "height": 800},
         locale="pt-BR",
+        **({"proxy": proxy} if proxy else {}),
     )
     page = ctx.new_page()
     try:
@@ -155,11 +173,13 @@ def refresh_once() -> bool:
         return False
 
     with sync_playwright() as pw:
+        proxy = _playwright_proxy()
         browser = pw.firefox.launch(headless=True)
         ctx = browser.new_context(
             user_agent=USER_AGENT,
             viewport={"width": 1280, "height": 800},
             locale="pt-BR",
+            **({"proxy": proxy} if proxy else {}),
         )
         ctx.add_cookies(existing)
         page = ctx.new_page()
