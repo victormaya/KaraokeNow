@@ -21,6 +21,7 @@ interface PlayerCtxValue {
   currentTime: number;
   duration: number;
   audioLoading: boolean;
+  bufferPct: number;
   setTrack: (track: Track, audioUrl: string) => void;
   play: () => void;
   pause: () => void;
@@ -47,6 +48,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const [currentTime,  setCurrentTime]  = useState(0);
   const [duration,     setDuration]     = useState(0);
   const [audioLoading, setAudioLoading] = useState(false);
+  const [bufferPct,    setBufferPct]    = useState(0);
   const [pitch,        setPitch]        = useState(0);
   const [hasOriginal,  setHasOriginal]  = useState(false);
   const [karaokeMode,  setKaraokeMode]  = useState(true);
@@ -76,6 +78,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setCurrentTime(0);
     setDuration(0);
     setAudioLoading(true);
+    setBufferPct(0);
     setHasOriginal(false);
     setKaraokeMode(true);
     setPitch(0);
@@ -161,7 +164,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <Ctx.Provider value={{
-      track, audioRef, playing, currentTime, duration, audioLoading,
+      track, audioRef, playing, currentTime, duration, audioLoading, bufferPct,
       setTrack, play, pause, seek,
       pitch, applyPitch,
       originalRef, hasOriginal, karaokeMode, setOriginalTrack, switchMode,
@@ -173,7 +176,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         onEnded={() => setPlaying(false)}
         onTimeUpdate={() => { if (audioRef.current) setCurrentTime(audioRef.current.currentTime); }}
         onLoadedMetadata={() => { if (audioRef.current) setDuration(audioRef.current.duration); }}
-        onCanPlay={() => setAudioLoading(false)}
+        onProgress={() => {
+          const a = audioRef.current;
+          if (!a || !a.duration || !a.buffered.length) return;
+          const pct = Math.round((a.buffered.end(a.buffered.length - 1) / a.duration) * 100);
+          setBufferPct(Math.min(100, pct));
+          if (pct >= 99) setAudioLoading(false);
+        }}
+        onCanPlayThrough={() => setAudioLoading(false)}
         onLoadedData={() => setAudioLoading(false)}
         onError={() => setAudioLoading(false)}
         preload="auto"

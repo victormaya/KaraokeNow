@@ -7,7 +7,7 @@ import styles from "./GlobalPlayer.module.css";
 
 export default function GlobalPlayer() {
   const {
-    track, playing, currentTime, duration, audioLoading,
+    track, playing, currentTime, duration, audioLoading, bufferPct,
     play, pause, seek,
     pitch, applyPitch,
     hasOriginal, karaokeMode, switchMode,
@@ -109,7 +109,7 @@ export default function GlobalPlayer() {
             aria-label={playing ? "Pausar" : "Reproduzir"}
           >
             {audioLoading ? (
-              <span className={styles.spinner} aria-hidden />
+              <span className={styles.loadingPct}>{bufferPct > 0 ? `${bufferPct}%` : ""}<span className={styles.spinner} aria-hidden /></span>
             ) : playing ? (
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
                 <rect x="6" y="4" width="4" height="16" rx="1" />

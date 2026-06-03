@@ -185,10 +185,22 @@
 .playBtn:hover:not(:disabled) { opacity: 0.85; transform: scale(1.05); }
 .playBtn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.loadingPct {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #fff;
+  line-height: 1;
+}
+
 .spinner {
   display: block;
-  width: 18px;
-  height: 18px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-top-color: #fff;
   border-radius: 50%;
