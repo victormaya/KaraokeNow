@@ -20,7 +20,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright, TimeoutError as PWTimeout
 
 COOKIES_FILE       = Path(os.environ.get("COOKIES_FILE", "/app/cookies.txt"))
-REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(600)))
+REFRESH_INTERVAL   = int(os.environ.get("COOKIE_REFRESH_INTERVAL", str(300)))
 GOOGLE_EMAIL       = os.environ.get("GOOGLE_EMAIL", "")
 GOOGLE_PASSWORD    = os.environ.get("GOOGLE_PASSWORD", "")
 YTDLP_PROXY        = os.environ.get("YTDLP_PROXY", "")
