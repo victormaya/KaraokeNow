@@ -1,0 +1,76 @@
+.container {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: var(--bg);
+}
+
+.card {
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  padding: 3rem 2.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 0 60px rgba(200, 80, 192, 0.08);
+}
+
+.icon {
+  font-size: 4rem;
+  line-height: 1;
+  margin-bottom: 1.5rem;
+  filter: drop-shadow(0 0 20px rgba(200, 80, 192, 0.5));
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 700;
+  background: var(--accent-grad);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 1rem;
+}
+
+.subtitle {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+  margin-bottom: 0.75rem;
+}
+
+.subtitle strong {
+  color: var(--accent);
+}
+
+.body {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.divider {
+  width: 48px;
+  height: 2px;
+  background: var(--accent-grad);
+  border-radius: 2px;
+  margin: 2rem auto;
+}
+
+.contact {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: none;
+  transition: opacity var(--transition);
+}
+
+.link:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
